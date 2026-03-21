@@ -1,0 +1,183 @@
+/* ========================= ADMIN TEST CHALLENGES OVERRIDES ========================= */
+.admin-test-challenges-wrapper .challenges-page {
+    /* Reset padding from index.css to fit within admin-content nicely */
+    padding-top: 0;
+    min-height: auto;
+    background-color: transparent;
+    background-image: none;
+    padding-bottom: 2rem;
+}
+
+.admin-test-challenges-wrapper .challenges-container {
+    max-width: 100%;
+    padding: 0;
+}
+
+.admin-test-challenges-wrapper .challenges-header {
+    margin-bottom: 3rem;
+}
+
+.admin-test-challenges-wrapper .challenges-title {
+    font-size: 3rem;
+    /* Slightly smaller for admin view */
+}
+
+.admin-test-challenges-wrapper .back-link {
+    color: #17a2b8;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+    transition: color 0.3s;
+}
+
+.admin-test-challenges-wrapper .back-link:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.admin-test-challenges-wrapper .challenge-card {
+    background: #080808;
+}
+
+.admin-test-challenges-wrapper .challenge-card:hover {
+    border-color: rgba(0, 255, 65, 0.4) !important;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.05) !important;
+}
+
+/* Override attempt button styles */
+.admin-test-challenges-wrapper .attempt-btn {
+    border: 1px solid var(--primary) !important;
+    color: var(--primary) !important;
+    background: transparent !important;
+}
+
+.admin-test-challenges-wrapper .attempt-btn:hover {
+    background: var(--primary) !important;
+    color: #000 !important;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.2) !important;
+}
+
+/* Modal adjustments within admin */
+.admin-test-challenges-wrapper .modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 99999 !important;
+    /* Above admin-content, sidebar, and navbar elements */
+    align-items: center !important;
+    /* Center modal properly */
+    justify-content: center !important;
+    padding-top: 0 !important;
+}
+
+.admin-test-challenges-wrapper .modal-content {
+    max-height: 85vh;
+    overflow-y: auto;
+    border-top: 2px solid rgba(0, 255, 65, 0.4) !important;
+    background: #0a0a0a;
+}
+
+@media (max-width: 1024px) {
+    .admin-test-challenges-wrapper .modal-body-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-test-challenges-wrapper .modal-main {
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding-right: 0;
+        padding-bottom: 2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-test-challenges-wrapper .challenges-title {
+        font-size: 2rem;
+    }
+
+    .admin-test-challenges-wrapper .modal-content {
+        padding: 1.5rem;
+    }
+}
+
+/* Modal form overrides for Test Sandbox */
+.admin-test-challenges-wrapper .sandbox-input:focus {
+    border-color: #888;
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.05);
+}
+
+.admin-test-challenges-wrapper .sandbox-submit:hover {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #fff !important;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1) !important;
+    transform: translateY(-2px);
+}
+
+/* ── Custom Filter Row Responsiveness ── */
+.admin-test-filters-row {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 20px 0 40px;
+    width: 100%;
+}
+
+.admin-test-search-box {
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 0 15px;
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.admin-test-selects-wrapper {
+    display: flex;
+    gap: 15px;
+    width: 100%;
+}
+
+.admin-test-selects-wrapper select {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+    padding: 12px 15px;
+    border-radius: 8px;
+    outline: none;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+}
+
+/* On Desktop monitors » arrange left/right */
+@media (min-width: 768px) {
+    .admin-test-filters-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .admin-test-search-box {
+        max-width: 400px;
+    }
+    .admin-test-selects-wrapper {
+        width: auto;
+        justify-content: flex-end;
+    }
+    .admin-test-selects-wrapper select {
+        flex: 0 1 auto;
+        min-width: 150px;
+    }
+}
+@media (max-width: 480px) {
+    .admin-test-selects-wrapper {
+        flex-direction: column;
+    }
+}

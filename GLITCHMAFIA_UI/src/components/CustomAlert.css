@@ -1,0 +1,140 @@
+/* CustomAlert.css */
+
+.custom-alert-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100000;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.custom-alert-box {
+    background: #080808;
+    border: 1px solid #333;
+    border-radius: 8px;
+    /* Sharper */
+    padding: 30px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.custom-alert-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: #fff;
+}
+
+.custom-alert-box.danger {
+    border-color: #ff3b30;
+    box-shadow: 0 10px 30px rgba(255, 59, 48, 0.1);
+}
+
+.custom-alert-box.danger::before {
+    background: #ff3b30;
+}
+
+.custom-alert-title {
+    font-family: 'Orbitron', sans-serif;
+    color: #fff;
+    font-size: 1.4rem;
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+}
+
+.custom-alert-message {
+    color: #aaa;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1rem;
+    margin-bottom: 30px;
+    line-height: 1.5;
+}
+
+.custom-alert-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.custom-alert-btn {
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.custom-alert-btn:active {
+    transform: scale(0.98);
+}
+
+.custom-alert-btn.cancel {
+    background: #2a2a2a;
+    color: #bbb;
+}
+
+.custom-alert-btn.cancel:hover {
+    background: #333;
+    color: #fff;
+}
+
+.custom-alert-btn.confirm-info {
+    background: #f8f9fa;
+    color: #111;
+}
+
+.custom-alert-btn.confirm-info:hover {
+    background: #e2e6ea;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
+}
+
+.custom-alert-btn.confirm-danger {
+    background: #dc3545;
+    color: #fff;
+}
+
+.custom-alert-btn.confirm-danger:hover {
+    background: #c82333;
+    box-shadow: 0 4px 10px rgba(220, 53, 69, 0.4);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

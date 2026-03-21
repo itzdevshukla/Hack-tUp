@@ -1,0 +1,53 @@
+export const events = [
+    {
+        id: 1,
+        title: "Operation: Null Pointer",
+        description: "A critical vulnerability has been discovered in the mainframe. Your objective is to exploit the null pointer dereference and gain root access. This is a high-stakes operation requiring advanced knowledge of memory management and C exploitation.",
+        difficulty: "Hard",
+        participants: 1240,
+        maxParticipants: 2000,
+        timeLeft: "02:45:12",
+        status: "LIVE",
+        image: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80",
+        venue: "Server Cluster Alpha",
+        type: "Team Deathmatch",
+        creator: "The Architect",
+        date: "2026-03-15",
+        time: "20:00 UTC",
+        tags: ["Pwn", "Reverse Engineering", "Binary"]
+    },
+    {
+        id: 2,
+        title: "Cyber Siege 2077",
+        description: "The city's defense systems are under attack. You must defend the network perimeter while identifying the source of the intrusion. Expect heavy traffic and sophisticated evasion techniques.",
+        difficulty: "Medium",
+        participants: 890,
+        maxParticipants: 1000,
+        timeLeft: "05:12:30",
+        status: "LIVE",
+        image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80",
+        venue: "Main Hall (Virtual)",
+        type: "Capture The Flag",
+        creator: "NullSec",
+        date: "2026-03-20",
+        time: "18:00 UTC",
+        tags: ["Network", "Defense", "Forensics"]
+    },
+    {
+        id: 3,
+        title: "Quantum Breach",
+        description: "Quantum cryptography is no longer theoretical. Break the encryption usage before the key rotation occurs. Time is of the essence.",
+        difficulty: "Expert",
+        participants: 450,
+        maxParticipants: 500,
+        timeLeft: "00:15:00",
+        status: "Starting Soon",
+        image: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80",
+        venue: "Deep Web Relay",
+        type: "Solo Sprint",
+        creator: "Q-Bit",
+        date: "2026-04-01",
+        time: "12:00 UTC",
+        tags: ["Crypto", "Quantum", "Algorithm"]
+    }
+];

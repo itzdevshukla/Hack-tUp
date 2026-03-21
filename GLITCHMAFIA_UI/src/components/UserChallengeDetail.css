@@ -1,0 +1,347 @@
+/* ═══════════════════════════════════════════════════════
+   UserChallengeDetail — Comprehensive Responsive Styles
+   Covers: Ultrawide → Desktop → Laptop → Tablet → Mobile
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Page wrapper ── */
+.challenge-detail-page {
+    min-height: 100vh;
+    color: #e5e5ea;
+    font-family: 'Inter', sans-serif;
+}
+
+/* ── Header bar ── */
+.challenge-detail-header {
+    padding: 0 clamp(0.75rem, 3vw, 2rem);
+    background: transparent;
+}
+
+.challenge-detail-header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 70px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* ── Main content area ── */
+.challenge-detail-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: clamp(1rem, 3vw, 3rem) clamp(0.75rem, 3vw, 2rem);
+    box-sizing: border-box;
+    width: 100%;
+}
+
+/* ── Title section ── */
+.challenge-detail-title-section {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 2.5rem;
+}
+
+.challenge-detail-title-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-width: 0;
+    flex: 1 1 0;
+}
+
+/* Ensure the title text truncates properly on narrow screens */
+.challenge-detail-title-left > div:last-child {
+    min-width: 0;
+}
+
+.challenge-detail-title-left h1 {
+    font-size: clamp(1.2rem, 3vw, 2rem) !important;
+    word-break: break-word;
+}
+
+.challenge-detail-title-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* ── Two-column layout (CSS Grid for proper control) ── */
+.challenge-detail-columns {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 2.5rem;
+    align-items: start;
+}
+
+.challenge-detail-left-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    min-width: 0;
+}
+
+.challenge-detail-right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    min-width: 0;
+}
+
+/* ── Content blocks ── */
+.challenge-detail-block {
+    padding: 2.5rem;
+}
+
+.challenge-detail-block-compact {
+    padding: 20px;
+}
+
+/* ── Flag input & submit button responsive ── */
+.challenge-detail-page input[type="text"] {
+    min-width: 0 !important;
+    box-sizing: border-box;
+}
+
+.challenge-detail-page form button[type="submit"] {
+    white-space: nowrap;
+}
+
+/* ── Flag row: the flex container for input + button ── */
+.challenge-detail-flag-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* ══════════════════════════════════
+   LARGE DESKTOP / ULTRAWIDE — 1440px+
+   ══════════════════════════════════ */
+@media (min-width: 1440px) {
+    .challenge-detail-main {
+        max-width: 1300px;
+    }
+
+    .challenge-detail-columns {
+        grid-template-columns: 1fr 420px;
+        gap: 3rem;
+    }
+
+    .challenge-detail-block {
+        padding: 2.5rem;
+    }
+}
+
+/* ══════════════════════════════════
+   DESKTOP — 1024px to 1439px (Normal)
+   ══════════════════════════════════ */
+@media (max-width: 1439px) and (min-width: 1025px) {
+    .challenge-detail-columns {
+        grid-template-columns: 1fr 340px;
+        gap: 2rem;
+    }
+}
+
+/* ══════════════════════════════════
+   SMALL LAPTOP / LARGE TABLET — 769px to 1024px
+   ══════════════════════════════════ */
+@media (max-width: 1024px) {
+    .challenge-detail-columns {
+        grid-template-columns: 1fr 280px;
+        gap: 1.5rem;
+    }
+
+    .challenge-detail-block {
+        padding: 1.5rem;
+    }
+
+    .challenge-detail-title-section {
+        gap: 1.2rem;
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    .challenge-detail-title-left h1 {
+        font-size: clamp(1.1rem, 2.5vw, 1.6rem) !important;
+    }
+}
+
+/* ══════════════════════════════════
+   TABLET — max 768px
+   Single column layout kicks in
+   ══════════════════════════════════ */
+@media (max-width: 768px) {
+    .challenge-detail-header-inner {
+        height: 56px;
+    }
+
+    .challenge-detail-main {
+        padding-top: 1.5rem;
+    }
+
+    .challenge-detail-title-section {
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+    }
+
+    .challenge-detail-title-left {
+        gap: 14px;
+    }
+
+    .challenge-detail-title-right {
+        text-align: left;
+    }
+
+    /* Switch to single column on tablet */
+    .challenge-detail-columns {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .challenge-detail-block {
+        padding: 1.5rem;
+    }
+
+    .challenge-detail-block-compact {
+        padding: 16px;
+    }
+
+    /* Title icon smaller */
+    .challenge-detail-title-left > div:first-child {
+        width: 50px !important;
+        height: 50px !important;
+        flex-shrink: 0;
+    }
+
+    /* Points right section inline */
+    .challenge-detail-title-right {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .challenge-detail-title-right div:last-child {
+        font-size: 1.8rem !important;
+    }
+}
+
+/* ══════════════════════════════════
+   MOBILE — max 480px
+   Everything compact and stacked
+   ══════════════════════════════════ */
+@media (max-width: 480px) {
+    .challenge-detail-header-inner {
+        height: 50px;
+        gap: 6px;
+    }
+
+    /* Hide event name on very small screens to save space */
+    .challenge-detail-header-inner > div:last-child {
+        display: none;
+    }
+
+    .challenge-detail-main {
+        padding-top: 0.8rem;
+        padding-left: 0.6rem;
+        padding-right: 0.6rem;
+    }
+
+    .challenge-detail-title-section {
+        flex-direction: column;
+        gap: 0.8rem;
+        margin-bottom: 1.2rem;
+        padding-bottom: 1.2rem;
+    }
+
+    .challenge-detail-title-left {
+        gap: 10px;
+        width: 100%;
+    }
+
+    .challenge-detail-title-left > div:first-child {
+        width: 40px !important;
+        height: 40px !important;
+        flex-shrink: 0;
+    }
+
+    .challenge-detail-title-left h1 {
+        font-size: 1.1rem !important;
+    }
+
+    .challenge-detail-title-right {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        text-align: left;
+        width: 100%;
+    }
+
+    .challenge-detail-title-right div:last-child {
+        font-size: 1.5rem !important;
+    }
+
+    /* Single column already from 768px rule */
+    .challenge-detail-columns {
+        gap: 1rem;
+    }
+
+    .challenge-detail-block {
+        padding: 1rem;
+    }
+
+    .challenge-detail-block-compact {
+        padding: 12px;
+    }
+
+    /* Flag submit form: stack input + button vertically */
+    .challenge-detail-page form > div {
+        flex-direction: column !important;
+    }
+
+    .challenge-detail-page form button[type="submit"] {
+        width: 100%;
+        min-height: 44px !important;
+    }
+
+    .challenge-detail-page form input[type="text"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+}
+
+/* ══════════════════════════════════
+   VERY SMALL MOBILE — max 360px
+   Ultra compact for tiny phones
+   ══════════════════════════════════ */
+@media (max-width: 360px) {
+    .challenge-detail-main {
+        padding-left: 0.4rem;
+        padding-right: 0.4rem;
+    }
+
+    .challenge-detail-block {
+        padding: 0.8rem;
+    }
+
+    .challenge-detail-block-compact {
+        padding: 10px;
+    }
+
+    .challenge-detail-title-left > div:first-child {
+        width: 36px !important;
+        height: 36px !important;
+    }
+
+    .challenge-detail-title-left h1 {
+        font-size: 1rem !important;
+    }
+}
