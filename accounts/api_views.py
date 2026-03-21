@@ -113,10 +113,11 @@ def user_status_api(request):
                 'date_joined': request.user.date_joined.strftime("%b %Y") if request.user.date_joined else "Unknown"
             }
         })
-        return JsonResponse({
-            'is_authenticated': False,
-            'user': None
-        })
+    
+    return JsonResponse({
+        'is_authenticated': False,
+        'user': None
+    })
 
 @require_POST
 @login_required
