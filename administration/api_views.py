@@ -1186,7 +1186,7 @@ def admin_event_leaderboard_api(request, event_id):
         team_list = []
         for team in teams:
             solves = team.solves.all()
-            total_points = sum(s.challenge.points for s in solves)
+            total_points = team.total_points
             last_solve_obj = solves.order_by('-solved_at').first()
             last_solve_str = last_solve_obj.solved_at.strftime("%Y-%m-%d %H:%M:%S") if last_solve_obj else None
 
@@ -1330,7 +1330,7 @@ def admin_event_submissions_api(request, event_id):
                 "challenge_title": s.challenge.title,
                 "flag": flag_val,
                 "is_correct": s.is_correct,
-                "submitted_at": s.submitted_at.strftime("%Y-%m-%d %H:%M:%S") if s.submitted_at else None
+                "submitted_at": timezone.localtime(s.submitted_at).strftime("%Y-%m-%d %I:%M:%S %p") if s.submitted_at else None
             }
             
             if event.is_team_mode:
@@ -1385,15 +1385,29 @@ def admin_user_event_submissions_api(request, event_id, user_id):
                 "challenge_title": s.challenge.title,
                 "flag": flag_val,
                 "is_correct": s.is_correct,
-                "submitted_at": s.submitted_at.strftime("%Y-%m-%d %H:%M:%S") if s.submitted_at else None
+                "submitted_at": timezone.localtime(s.submitted_at).strftime("%Y-%m-%d %I:%M:%S %p") if s.submitted_at else None
             })
             
-        hints = (
-            UserHint.objects
-            .filter(hint__challenge__event=event, user=user)
-            .select_related("hint__challenge")
-            .order_by("-unlocked_at")
-        )
+        if event.is_team_mode:
+            from teams.models import TeamMember, TeamHint
+            team_member = TeamMember.objects.filter(user=user, team__event=event).first()
+            if team_member:
+                hints = (
+                    TeamHint.objects
+                    .filter(team=team_member.team, unlocked_by=user)
+                    .select_related("hint__challenge")
+                    .order_by("-unlocked_at")
+                )
+            else:
+                hints = []
+        else:
+            hints = (
+                UserHint.objects
+                .filter(hint__challenge__event=event, user=user)
+                .select_related("hint__challenge")
+                .order_by("-unlocked_at")
+            )
+
         hints_data = []
         for h in hints:
             hints_data.append({
@@ -1464,13 +1478,31 @@ def admin_team_submissions_api(request, event_id, team_id):
             "challenge_title": s.challenge.title,
             "flag": flag_val,
             "is_correct": s.is_correct,
-            "submitted_at": s.submitted_at.strftime("%Y-%m-%d %H:%M:%S") if s.submitted_at else None,
+            "submitted_at": timezone.localtime(s.submitted_at).strftime("%Y-%m-%d %I:%M:%S %p") if s.submitted_at else None,
+        })
+        
+    from teams.models import TeamHint
+    team_hints = (
+        TeamHint.objects
+        .filter(team=team)
+        .select_related("hint__challenge", "unlocked_by")
+        .order_by("-unlocked_at")
+    )
+    hints_data = []
+    for th in team_hints:
+        hints_data.append({
+            "id": encode_id(th.id),
+            "challenge_title": th.hint.challenge.title,
+            "cost": th.hint.cost,
+            "unlocked_by": th.unlocked_by.username if th.unlocked_by else "Unknown",
+            "unlocked_at": timezone.localtime(th.unlocked_at).strftime("%Y-%m-%d %I:%M:%S %p") if th.unlocked_at else None,
         })
 
     return JsonResponse({
         "event_name": event.event_name,
         "team_name": team.name,
         "submissions": submissions_data,
+        "hints_taken": hints_data,
     })
 
 

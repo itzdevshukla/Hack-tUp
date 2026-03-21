@@ -161,7 +161,12 @@ def event_challenges_api(request, event_id):
 
         # Process hints
         for hint in challenge.hints.all():
-            is_unlocked = hint.cost == 0 or UserHint.objects.filter(user=request.user, hint=hint).exists()
+            if is_team_mode and user_team:
+                from teams.models import TeamHint
+                is_unlocked = hint.cost == 0 or TeamHint.objects.filter(team=user_team, hint=hint).exists()
+            else:
+                is_unlocked = hint.cost == 0 or UserHint.objects.filter(user=request.user, hint=hint).exists()
+                
             challenges_data[-1]['hints'].append({
                 'id': encode_id(hint.id),
                 'cost': hint.cost,
@@ -195,15 +200,53 @@ def event_challenges_api(request, event_id):
 @require_POST
 def unlock_hint_api(request, hint_id):
     hint = get_object_or_404(ChallengeHint, id=hint_id)
-    
-    # Check if already unlocked
-    if UserHint.objects.filter(user=request.user, hint=hint).exists():
-         return JsonResponse({'success': True, 'hint_content': hint.content})
+    challenge = hint.challenge
+    event = challenge.event
 
-    # Unlock logic
-    UserHint.objects.create(user=request.user, hint=hint)
-    
-    return JsonResponse({'success': True, 'hint_content': hint.content})
+    access = EventAccess.objects.filter(user=request.user, event=event).first()
+    is_admin_or_creator = request.user.is_superuser or request.user.is_staff or getattr(request.user, 'role', '') in ['admin', 'organizer'] or event.created_by == request.user
+
+    if not is_admin_or_creator:
+        if not access or not access.is_registered or access.is_banned:
+            return JsonResponse({'error': 'Access denied'}, status=403)
+            
+        current_status = event.get_current_status()
+        if current_status != 'live':
+            return JsonResponse({'error': f'Event is currently {current_status}. Hint unlocks are closed.'}, status=403)
+
+    if event.is_team_mode:
+        from teams.models import TeamMember, TeamHint
+        membership = TeamMember.objects.filter(user=request.user, team__event=event).first()
+        if not membership and not is_admin_or_creator:
+            return JsonResponse({'error': 'You are not in a team.'}, status=403)
+            
+        if membership:
+            team = membership.team
+            if TeamHint.objects.filter(team=team, hint=hint).exists():
+                return JsonResponse({'success': True, 'hint_content': hint.content})
+                
+            current_points = team.total_points
+            if not is_admin_or_creator and current_points < hint.cost:
+                return JsonResponse({'error': f'Not enough team points. Required: {hint.cost}, Available: {current_points}'}, status=400)
+                
+            TeamHint.objects.create(team=team, hint=hint, unlocked_by=request.user)
+            return JsonResponse({'success': True, 'hint_content': hint.content})
+    else:
+        if UserHint.objects.filter(user=request.user, hint=hint).exists():
+             return JsonResponse({'success': True, 'hint_content': hint.content})
+             
+        from django.db import models
+        user_solves = UserChallenge.objects.filter(user=request.user, challenge__event=event, is_correct=True).aggregate(total=models.Sum('challenge__points'))['total'] or 0
+        user_hints = UserHint.objects.filter(user=request.user, hint__challenge__event=event).aggregate(total=models.Sum('hint__cost'))['total'] or 0
+        current_points = max(0, user_solves - user_hints)
+        
+        if not is_admin_or_creator and current_points < hint.cost:
+            return JsonResponse({'error': f'Not enough points. Required: {hint.cost}, Available: {current_points}'}, status=400)
+            
+        UserHint.objects.create(user=request.user, hint=hint)
+        return JsonResponse({'success': True, 'hint_content': hint.content})
+
+    return JsonResponse({'error': 'Failed to unlock hint.'}, status=400)
 
 @login_required
 @require_POST
@@ -321,30 +364,59 @@ def event_leaderboard_api(request, event_id):
             user_team_id = user_membership.team_id
 
         for team in teams:
-            solves = sorted(team.solves.all(), key=lambda s: s.solved_at)
+            timeline_events = []
+            
+            for solve in team.solves.all():
+                timeline_events.append({
+                    'type': 'solve',
+                    'name': solve.challenge.title,
+                    'delta': solve.challenge.points,
+                    'timestamp': solve.solved_at,
+                    'id': encode_id(solve.id)
+                })
+                
+            # Get Team hints
+            team_hints = team.hints_unlocked.select_related('hint', 'hint__challenge')
+            for th in team_hints:
+                timeline_events.append({
+                    'type': 'hint',
+                    'name': f"Hint: {th.hint.challenge.title}",
+                    'delta': -th.hint.cost,
+                    'timestamp': th.unlocked_at,
+                    'id': f"hint-{th.id}"
+                })
+                
+            timeline_events.sort(key=lambda x: x['timestamp'])
+            
             current_score = 0
+            current_flags = 0
+            last_solve_time = None
+            
             history = [{
                 'flagName': 'Event Start', 'points': 0, 'total': 0,
                 'timestamp': 'Start', 'rawTime': event_start_iso, 'id': 'start'
             }]
 
-            for solve in solves:
-                current_score += solve.challenge.points
+            for evt in timeline_events:
+                current_score += evt['delta']
+                    
+                if evt['type'] == 'solve':
+                    current_flags += 1
+                    last_solve_time = evt['timestamp']
+                    
                 history.append({
-                    'flagName': solve.challenge.title,
-                    'points': solve.challenge.points,
+                    'flagName': evt['name'],
+                    'points': evt['delta'],
                     'total': current_score,
-                    'timestamp': solve.solved_at.strftime('%H:%M'),
-                    'rawTime': solve.solved_at.isoformat(),
-                    'id': encode_id(solve.id)
+                    'timestamp': evt['timestamp'].strftime('%H:%M'),
+                    'rawTime': evt['timestamp'].isoformat(),
+                    'id': evt['id']
                 })
 
             history.append({
                 'flagName': 'Current', 'points': 0, 'total': current_score,
                 'timestamp': 'Now', 'rawTime': timezone.now().isoformat(), 'id': 'now'
             })
-
-            last_solve_time = solves[-1].solved_at if solves else None
 
             team_list.append({
                 'id': encode_id(team.id),
@@ -353,7 +425,7 @@ def event_leaderboard_api(request, event_id):
                 'members': [m.user.username for m in team.members.all()],
                 'member_count': team.members.count(),
                 'points': current_score,
-                'flags': len(solves),
+                'flags': current_flags,
                 'last_solve_time': last_solve_time,
                 'history': history,
                 'avatar': f'https://ui-avatars.com/api/?name={team.name}&background=random&color=fff',
@@ -473,8 +545,6 @@ def event_leaderboard_api(request, event_id):
 
         for evt in data['timeline_events']:
             current_score += evt['delta']
-            if current_score < 0:
-                current_score = 0
             if evt['type'] == 'solve':
                 current_flags += 1
                 last_solve = evt['timestamp']

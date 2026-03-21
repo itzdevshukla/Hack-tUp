@@ -29,6 +29,7 @@ function TeamLeaderboard({ eventId, eventName, teams, refresh }) {
     const [modalTeam, setModalTeam] = useState(null);
     const [activeTab, setActiveTab] = useState('members');
     const [submissions, setSubmissions] = useState([]);
+    const [hintsTaken, setHintsTaken] = useState([]);
     const [subsLoading, setSubsLoading] = useState(false);
     const [subsFilter, setSubsFilter] = useState('all');
     const [togglingBan, setTogglingBan] = useState(false);
@@ -40,23 +41,25 @@ function TeamLeaderboard({ eventId, eventName, teams, refresh }) {
         setModalTeam(team);
         setActiveTab('members');
         setSubmissions([]);
+        setHintsTaken([]);
         setSubsFilter('all');
     };
 
     const loadSubmissions = async (team) => {
-        if (submissions.length > 0) return; // already loaded
+        if (submissions.length > 0 && hintsTaken.length > 0) return; // already loaded
         setSubsLoading(true);
         try {
             const res = await fetch(`/api/admin/event/${eventId}/team/${team.team_id}/submissions/`, { headers: headers() });
             const data = await res.json();
             setSubmissions(data.submissions || []);
-        } catch { setSubmissions([]); }
+            setHintsTaken(data.hints_taken || []);
+        } catch { setSubmissions([]); setHintsTaken([]); }
         finally { setSubsLoading(false); }
     };
 
     const switchTab = (tab, team) => {
         setActiveTab(tab);
-        if (tab === 'submissions') loadSubmissions(team);
+        if (tab === 'submissions' || tab === 'hints') loadSubmissions(team);
     };
 
     const handleToggleBan = () => {
@@ -222,7 +225,7 @@ function TeamLeaderboard({ eventId, eventName, teams, refresh }) {
 
                         {/* Tabs */}
                         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #1a1a1a', marginBottom: 16 }}>
-                            {['members', 'submissions'].map(tab => (
+                            {['members', 'submissions', 'hints'].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => switchTab(tab, modalTeam)}
@@ -234,7 +237,7 @@ function TeamLeaderboard({ eventId, eventName, teams, refresh }) {
                                         letterSpacing: 1, textTransform: 'uppercase', transition: 'all 0.2s'
                                     }}
                                 >
-                                    {tab === 'members' ? <><FaUsers style={{ marginRight: 6 }} />Members ({modalTeam.member_count})</> : <><FaEye style={{ marginRight: 6 }} />Submissions</>}
+                                    {tab === 'members' ? <><FaUsers style={{ marginRight: 6 }} />Members ({modalTeam.member_count})</> : tab === 'submissions' ? <><FaEye style={{ marginRight: 6 }} />Submissions</> : <><FaEye style={{ marginRight: 6 }} />Hints Taken</>}
                                 </button>
                             ))}
                         </div>
@@ -355,6 +358,41 @@ function TeamLeaderboard({ eventId, eventName, teams, refresh }) {
                                         </table>
                                     )}
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Hints Tab */}
+                        {activeTab === 'hints' && (
+                            <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+                                {subsLoading ? (
+                                    <p style={{ textAlign: 'center', padding: 30, color: '#00ff41', fontFamily: 'Orbitron', fontSize: '0.8rem' }}>
+                                        LOADING HINTS...
+                                    </p>
+                                ) : (
+                                    <table className="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Time</th>
+                                                <th>Member</th>
+                                                <th>Challenge</th>
+                                                <th>Cost</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {hintsTaken.map(h => (
+                                                <tr key={h.id}>
+                                                    <td style={{ fontSize: '0.78rem', color: '#666' }}>{h.unlocked_at}</td>
+                                                    <td style={{ color: '#00bfff', fontSize: '0.88rem' }}>{h.unlocked_by}</td>
+                                                    <td>{h.challenge_title}</td>
+                                                    <td style={{ color: '#ff3b30', fontWeight: 'bold' }}>-{h.cost}</td>
+                                                </tr>
+                                            ))}
+                                            {hintsTaken.length === 0 && !subsLoading && (
+                                                <tr><td colSpan="4" style={{ textAlign: 'center', padding: 20, color: '#555' }}>No hints taken.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                )}
                             </div>
                         )}
                     </div>

@@ -184,6 +184,7 @@ def user_challenge_saved(sender, instance, created, **kwargs):
         except Exception:
             pass
 
+        from django.utils import timezone
         submission_data = {
             "event_id": encode_id(instance.challenge.event_id),
             "id": encode_id(instance.id),
@@ -193,7 +194,7 @@ def user_challenge_saved(sender, instance, created, **kwargs):
             "challenge_title": instance.challenge.title,
             "flag": instance.submitted_flag if not instance.is_correct else "CORRECT",
             "is_correct": instance.is_correct,
-            "submitted_at": instance.submitted_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "submitted_at": timezone.localtime(instance.submitted_at).strftime("%Y-%m-%d %I:%M:%S %p"),
             "team_name": team_name,
             "team_id": team_id,
         }

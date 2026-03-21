@@ -39,10 +39,10 @@ class Team(models.Model):
 
     @property
     def total_points(self):
-        """Sum of points from all correct team solves."""
-        return (
-            self.solves.aggregate(total=models.Sum("challenge__points"))["total"] or 0
-        )
+        """Sum of points from all correct team solves minus hint costs."""
+        solves_points = self.solves.aggregate(total=models.Sum("challenge__points"))["total"] or 0
+        hints_cost = self.hints_unlocked.aggregate(total=models.Sum("hint__cost"))["total"] or 0
+        return max(0, solves_points - hints_cost)
 
     @property
     def last_solve_time(self):
@@ -98,3 +98,17 @@ class TeamChallenge(models.Model):
 
     def __str__(self):
         return f"{self.team.name} → {self.challenge.title}"
+
+
+class TeamHint(models.Model):
+    """Records when a team unlocks a hint."""
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="hints_unlocked")
+    hint = models.ForeignKey("challenges.ChallengeHint", on_delete=models.CASCADE)
+    unlocked_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    unlocked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("team", "hint")
+
+    def __str__(self):
+        return f"{self.team.name} unlocked {self.hint}"
