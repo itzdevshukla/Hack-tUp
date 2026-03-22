@@ -247,6 +247,7 @@ function AdminEventChallengeCreate() {
                                     min="0"
                                     value={form.points}
                                     onChange={handleChange}
+                                    onWheel={(e) => e.target.blur()}
                                     required
                                     style={{ ...INPUT_STYLE, fontSize: '1.5rem', fontFamily: 'Orbitron', textAlign: 'center', padding: '10px' }}
                                     onFocus={e => e.target.style.borderColor = '#444'} onBlur={e => e.target.style.borderColor = '#222'}
@@ -276,6 +277,7 @@ function AdminEventChallengeCreate() {
                                                     type="number" min="0"
                                                     value={hint.cost}
                                                     onChange={e => updateHint(index, 'cost', e.target.value)}
+                                                    onWheel={(e) => e.target.blur()}
                                                     style={{ ...INPUT_STYLE, color: '#00ff41', background: '#0a0a0a', padding: '8px 12px', fontSize: '0.95rem' }}
                                                 />
                                             </div>

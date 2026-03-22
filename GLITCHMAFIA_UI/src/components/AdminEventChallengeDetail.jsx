@@ -470,6 +470,7 @@ function AdminEventChallengeDetail() {
                                 name="points"
                                 value={formData.points}
                                 onChange={handleInputChange}
+                                onWheel={(e) => e.target.blur()}
                                 style={{ width: '100%', padding: '10px 0', background: 'transparent', border: 'none', borderBottom: '1px solid #333', color: '#fff', fontSize: '1.1rem', outline: 'none' }}
                                 required
                             />
@@ -508,6 +509,7 @@ function AdminEventChallengeDetail() {
                                                         newHints[index].cost = e.target.value;
                                                         setFormData({ ...formData, hints: newHints });
                                                     }}
+                                                    onWheel={(e) => e.target.blur()}
                                                     style={{ width: '100%', padding: '5px', background: 'transparent', border: 'none', borderBottom: '1px solid #444', color: '#00ff41', outline: 'none', fontFamily: 'monospace' }}
                                                     min="0"
                                                 />
