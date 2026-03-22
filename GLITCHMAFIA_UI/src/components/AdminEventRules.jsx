@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomAlert from './CustomAlert';
 import { FaSave, FaArrowLeft, FaGavel, FaEdit, FaTimesCircle, FaCheckCircle } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminEventRules() {
     const { id } = useParams();
@@ -26,7 +27,9 @@ function AdminEventRules() {
         setLoading(true);
         try {
             const response = await fetch(`/api/admin/event/${id}/`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (response.ok) {
                 const data = await response.json();
@@ -49,7 +52,8 @@ function AdminEventRules() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'X-CSRFToken': getCsrfToken(),
+
                 },
                 body: JSON.stringify({ rules: editedRules })
             });

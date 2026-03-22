@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FaSave, FaArrowLeft, FaSpinner, FaKey, FaCopy } from 'react-icons/fa';
 import CustomAlert from './CustomAlert';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminEditEvent() {
     const { id } = useParams();
@@ -38,7 +39,9 @@ function AdminEditEvent() {
         const fetchEventDetails = async () => {
             try {
                 const response = await fetch(`/api/admin/event/${id}/`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
                 });
 
                 if (!response.ok) {
@@ -111,7 +114,8 @@ function AdminEditEvent() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'X-CSRFToken': getCsrfToken(),
+
                 },
                 body: JSON.stringify(formData)
             });
@@ -164,7 +168,9 @@ function AdminEditEvent() {
         try {
             const response = await fetch(`/api/admin/event-request/${id}/${actionStr}/`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             const data = await response.json();
             if (response.ok && data.success) {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaPlusCircle, FaArrowLeft, FaSpinner } from 'react-icons/fa';
 import CustomAlert from './CustomAlert';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminAddEvent() {
     const navigate = useNavigate();
@@ -45,7 +46,8 @@ function AdminAddEvent() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'X-CSRFToken': getCsrfToken(),
+
                 },
                 body: JSON.stringify(formData)
             });

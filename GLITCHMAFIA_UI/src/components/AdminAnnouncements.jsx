@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FaBullhorn, FaPlus, FaTimes, FaCheck, FaExclamationTriangle, FaInfoCircle, FaCheckCircle, FaBan, FaTrash } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminAnnouncements() {
     const { id } = useParams();
@@ -31,7 +32,7 @@ function AdminAnnouncements() {
         setError(null);
         try {
             const headers = {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+
             };
 
             const [eventRes, annRes] = await Promise.all([
@@ -72,7 +73,8 @@ function AdminAnnouncements() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'X-CSRFToken': getCsrfToken(),
+
                 },
                 body: JSON.stringify({ title, content, type })
             });
@@ -111,7 +113,8 @@ function AdminAnnouncements() {
             const res = await fetch(`/api/admin/event/${id}/announcements/${announcementToDelete.id}/delete/`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
                 }
             });
 

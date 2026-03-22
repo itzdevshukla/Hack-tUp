@@ -12,7 +12,7 @@ import HostEvent from './components/HostEvent';
 import Profile from './components/Profile';
 import Leaderboard from './components/Leaderboard';
 import EventLeaderboard from './components/EventLeaderboard';
-import ClassicLeaderboard from './components/ClassicLeaderboard';
+
 
 
 import EventDetails from './components/EventDetails';
@@ -42,7 +42,7 @@ const TeamSectionWrapper = () => {
 
   useEffect(() => {
     fetch(`/api/dashboard/event/${id}/`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      headers: {},
       credentials: 'include'
     })
       .then(res => {
@@ -119,7 +119,7 @@ function App() {
           <Route path="/administration/*" element={<AdminDashboard />} />
 
           {/* Standalone Classic Leaderboard – no layout, opens in new tab */}
-          <Route path="/classic-leaderboard/:id" element={<ClassicLeaderboard />} />
+
 
           {/* 404 Catch-All Route */}
           <Route path="*" element={<NotFound />} />

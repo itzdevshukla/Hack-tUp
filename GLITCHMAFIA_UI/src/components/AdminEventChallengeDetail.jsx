@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import CustomAlert from './CustomAlert';
 import { FaEdit, FaSave, FaTimes, FaPuzzlePiece, FaCheckCircle, FaExclamationCircle, FaPlusCircle } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminEventChallengeDetail() {
     const { id, challengeId } = useParams();
@@ -14,7 +15,9 @@ function AdminEventChallengeDetail() {
 
     useEffect(() => {
         fetch(`/api/admin/event/${id}/waves/`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
         }).then(r => r.json()).then(d => setWaves(d.waves || [])).catch(() => { });
     }, [id]);
 
@@ -41,7 +44,9 @@ function AdminEventChallengeDetail() {
     const fetchChallengeDetail = async () => {
         try {
             const response = await fetch(`/api/admin/event/${id}/challenge/${challengeId}/`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!response.ok) throw new Error('Failed to fetch challenge details');
             const data = await response.json();
@@ -96,7 +101,7 @@ function AdminEventChallengeDetail() {
             const res = await fetch(`/api/admin/event/${id}/challenge/${challengeId}/`, {
                 method: 'POST', // Use POST for multipart/form-data with Django
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'X-CSRFToken': getCsrfToken()
                 },
                 body: submitData
             });
@@ -162,7 +167,8 @@ function AdminEventChallengeDetail() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'X-CSRFToken': getCsrfToken(),
+
                 },
                 body: JSON.stringify({ action: 'delete_file', file_id: fileId })
             });

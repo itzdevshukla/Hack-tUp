@@ -4,7 +4,7 @@ import { FaTrophy, FaArrowLeft, FaEye, FaTimes, FaCheck, FaUsers, FaCrown, FaUse
 import CustomAlert from './CustomAlert';
 
 /* ─── tiny shared helpers ─────────────────────────────────────────── */
-const headers = () => ({ 'Authorization': `Bearer ${localStorage.getItem('token')}` });
+const headers = () => ({  });
 
 const RankBadge = ({ rank }) => {
     const color = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#555';

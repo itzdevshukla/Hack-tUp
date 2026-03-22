@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { FaEye, FaArrowLeft, FaCheck, FaTimes, FaSearch, FaExpand, FaCompress } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminEventLiveSubmissions() {
     const { id } = useParams();
@@ -15,7 +16,9 @@ function AdminEventLiveSubmissions() {
     const fetchSubmissions = async () => {
         try {
             const response = await fetch(`/api/admin/event/${id}/submissions/`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!response.ok) throw new Error('Failed to fetch submissions');
             const result = await response.json();

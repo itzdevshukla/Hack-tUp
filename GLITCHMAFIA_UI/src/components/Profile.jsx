@@ -4,6 +4,7 @@ import AuthContext from '../context/AuthContext';
 import { FaUserShield, FaEnvelope, FaCalendarAlt, FaStar, FaTrophy, FaCalendarCheck, FaKey, FaTrashAlt, FaTimes } from 'react-icons/fa';
 import ActivityHeatmap from './ActivityHeatmap'; // Import the new Heatmap
 import './Dashboard.css';
+import { getCsrfToken } from '../utils/csrf';
 
 // Helper to get CSRF token
 function getCookie(name) {
@@ -77,7 +78,7 @@ const Profile = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify({
                     old_password: pwdForm.old_password,
@@ -106,7 +107,7 @@ const Profile = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify({ password: delForm.password })
             });

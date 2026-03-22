@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import CustomAlert from './CustomAlert';
 import { FaSearch, FaUserPlus, FaTimes, FaSpinner } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminUsers() {
     const [data, setData] = useState({ stats: {}, users: [] });
@@ -29,7 +30,9 @@ function AdminUsers() {
     const fetchUsers = async () => {
         try {
             const response = await fetch('/api/admin/users/', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!response.ok) throw new Error('Failed to fetch users');
             const result = await response.json();
@@ -58,7 +61,9 @@ function AdminUsers() {
         try {
             const res = await fetch(`/api/admin/user/${userId}/delete/`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!res.ok) {
                 const errorData = await res.json();
@@ -97,7 +102,9 @@ function AdminUsers() {
         setSelectedFile(null);
         try {
             const res = await fetch('/api/admin/users/import/', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -128,7 +135,9 @@ function AdminUsers() {
         try {
             const res = await fetch('/api/admin/users/import/', {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                },
                 body: formData
             });
 

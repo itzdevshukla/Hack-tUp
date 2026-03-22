@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { FaBullhorn, FaTimes, FaChevronDown, FaChevronUp, FaInfoCircle, FaExclamationTriangle, FaBan, FaCheckCircle, FaClock, FaRegBell } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Dashboard.css';
+import { getCsrfToken } from '../utils/csrf';
 
 function EventArenaLayout({ children }) {
     const { id } = useParams();
@@ -69,7 +70,9 @@ function EventArenaLayout({ children }) {
         const fetchAnnouncements = async () => {
             try {
                 const res = await fetch(`/api/event/${id}/announcements/`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
                 });
                 if (res.ok) {
                     const data = await res.json();

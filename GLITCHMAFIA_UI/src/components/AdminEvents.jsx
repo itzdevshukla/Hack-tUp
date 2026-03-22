@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import CustomAlert from './CustomAlert';
 import { FaCalendarAlt, FaMapMarkerAlt, FaKey, FaCopy, FaEdit } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminEvents() {
     const [data, setData] = useState({ stats: {}, events: [] });
@@ -27,7 +28,9 @@ function AdminEvents() {
     const fetchEvents = async () => {
         try {
             const response = await fetch('/api/admin/events/', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!response.ok) throw new Error('Failed to fetch events');
             const result = await response.json();
@@ -56,7 +59,9 @@ function AdminEvents() {
         try {
             const res = await fetch(`/api/admin/event/${eventId}/delete/`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!res.ok) {
                 const errorData = await res.json();

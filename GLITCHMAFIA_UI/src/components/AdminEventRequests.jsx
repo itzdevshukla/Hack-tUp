@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { FaEdit } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 const AdminEventRequests = () => {
     const [requests, setRequests] = useState([]);
@@ -9,9 +10,10 @@ const AdminEventRequests = () => {
 
     const fetchRequests = async () => {
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch("/api/admin/event-requests/", {
-                headers: { "Authorization": `Bearer ${token}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             const data = await res.json();
             if (res.ok) {

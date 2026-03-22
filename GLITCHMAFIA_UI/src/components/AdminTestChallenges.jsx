@@ -10,6 +10,7 @@ import {
 import './AdminTestChallengesOverrides.css';
 import './Challenges.css';
 import '../components/UserChallengeDetail.css'; // Leverage existing user-side detailed CSS
+import { getCsrfToken } from '../utils/csrf';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 const DIFF_COLOR = { easy: '#22d3ee', medium: '#fb923c', hard: '#f87171' };
@@ -64,7 +65,9 @@ const AdminTestChallenges = () => {
     const fetchTestChallenges = async () => {
         try {
             const response = await fetch(`/api/admin/event/${id}/test-challenges/`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
 
             if (!response.ok) {
@@ -99,8 +102,7 @@ const AdminTestChallenges = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1]
+                    'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify({ flag: flagInput })
             });
@@ -154,44 +156,7 @@ const AdminTestChallenges = () => {
         return (
             <div className="challenge-detail-page" style={{ minHeight: '100vh', background: '#0a0a0a', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
 
-                {/* FAAAA! Splash Animation equivalent for Admin Testing incorrect hashes */}
-                <AnimatePresence>
-                    {submitStatus?.status === 'error' && submitStatus?.message.includes('INVALID FLAG') && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            style={{
-                                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                                background: 'rgba(0,0,0,0.4)',
-                                backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-                                zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                pointerEvents: 'none'
-                            }}
-                        >
-                            <motion.h1
-                                initial={{ opacity: 0, scale: 0.5, rotate: -5 }}
-                                animate={{ opacity: 1, scale: 1.1, rotate: 0 }}
-                                exit={{ opacity: 0, scale: 1.5, rotate: 5 }}
-                                transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                                style={{
-                                    fontSize: 'clamp(5rem, 18vw, 12rem)',
-                                    color: '#EF4444',
-                                    fontWeight: 900,
-                                    textTransform: 'uppercase',
-                                    fontFamily: "'Inter', 'Impact', sans-serif",
-                                    textShadow: '8px 8px 0px #8B0000, 15px 15px 30px rgba(0,0,0,0.5)',
-                                    margin: 0,
-                                    textAlign: 'center',
-                                    fontStyle: 'italic'
-                                }}
-                            >
-                                FAAAA!!!
-                            </motion.h1>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+
 
                 {/* Header Bar matching User UX */}
                 <header className="challenge-detail-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>

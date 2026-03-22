@@ -3,8 +3,12 @@ import { createPortal } from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { FaUsers, FaArrowLeft, FaEye, FaShieldAlt, FaTrash, FaBan, FaUnlock } from 'react-icons/fa';
 import CustomAlert from './CustomAlert';
+import { getCsrfToken } from '../utils/csrf';
 
-const headers = () => ({ 'Authorization': `Bearer ${localStorage.getItem('token')}` });
+const headers = () => ({
+    'Content-Type': 'application/json',
+    'X-CSRFToken': getCsrfToken()
+});
 
 function AdminEventTeams() {
     const { id } = useParams();

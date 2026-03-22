@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FaTrophy, FaPuzzlePiece, FaBullseye, FaCalendarAlt } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminUserDetail() {
     const { id } = useParams();
@@ -11,7 +12,9 @@ function AdminUserDetail() {
     const fetchUserDetail = async () => {
         try {
             const response = await fetch(`/api/admin/user/${id}/`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!response.ok) throw new Error('Failed to fetch user details');
             const data = await response.json();

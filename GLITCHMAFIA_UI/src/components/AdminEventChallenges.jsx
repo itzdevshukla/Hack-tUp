@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import CustomAlert from './CustomAlert';
 import { FaPlusCircle, FaEdit, FaTrash, FaPuzzlePiece, FaShieldAlt, FaFire } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 const CATEGORY_COLORS = {
     'Web': { bg: 'rgba(0,122,255,0.15)', border: '#007aff', color: '#007aff' },
@@ -33,7 +34,9 @@ function AdminEventChallenges() {
     const fetchEventChallenges = async () => {
         try {
             const response = await fetch(`/api/admin/event/${id}/`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!response.ok) throw new Error('Failed to fetch event data');
             const data = await response.json();
@@ -63,7 +66,9 @@ function AdminEventChallenges() {
         try {
             const res = await fetch(`/api/admin/event/${id}/challenge/${challengeId}/`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!res.ok) throw new Error('Failed to delete challenge');
             setChallenges(prev => prev.filter(c => c.id !== challengeId));

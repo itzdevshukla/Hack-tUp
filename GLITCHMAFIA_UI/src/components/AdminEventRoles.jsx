@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { FaUserShield, FaPlus, FaTrash, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
 import CustomAlert from './CustomAlert';
 import './Admin.css';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminEventRoles() {
     const { id } = useParams();
@@ -35,7 +36,9 @@ function AdminEventRoles() {
     const fetchEventDetails = async () => {
         try {
             const response = await fetch(`/api/admin/event/${id}/`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (response.ok) {
                 const data = await response.json();
@@ -50,7 +53,9 @@ function AdminEventRoles() {
         setLoading(true);
         try {
             const response = await fetch(`/api/admin/event/${id}/roles/`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!response.ok) {
                 if (response.status === 403) {
@@ -89,7 +94,8 @@ function AdminEventRoles() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'X-CSRFToken': getCsrfToken(),
+
                 },
                 body: JSON.stringify({
                     username: newUsername,
@@ -146,7 +152,8 @@ function AdminEventRoles() {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'X-CSRFToken': getCsrfToken(),
+
                 },
                 body: JSON.stringify({ role_id: roleId })
             });

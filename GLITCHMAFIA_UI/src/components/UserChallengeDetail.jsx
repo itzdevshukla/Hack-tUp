@@ -50,7 +50,7 @@ const UserChallengeDetail = () => {
         try {
             const res = await fetch(`/api/event/${id}/challenges/`, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+
                 }
             });
             const data = await res.json();
@@ -88,7 +88,7 @@ const UserChallengeDetail = () => {
         try {
             const res = await fetch(`/api/challenge/${challenge.id}/solvers/`, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+
                 }
             });
             const data = await res.json();
@@ -120,7 +120,6 @@ const UserChallengeDetail = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
                     'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify({ flag: flagInput })
@@ -160,7 +159,6 @@ const UserChallengeDetail = () => {
             const res = await fetch(`/api/hint/${hintId}/unlock/`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
                     'X-CSRFToken': getCsrfToken()
                 }
             });

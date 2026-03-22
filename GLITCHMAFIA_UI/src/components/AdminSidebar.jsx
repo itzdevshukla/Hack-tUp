@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import CustomAlert from './CustomAlert';
 import { FaChartBar, FaUsers, FaBullseye, FaArrowLeft, FaSignOutAlt, FaBars, FaPlusCircle, FaEye, FaTrophy, FaEdit, FaPlay, FaPause, FaStop, FaCode, FaWater, FaUserShield, FaFlask, FaGavel, FaBullhorn } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminSidebar({ isOpen, setIsOpen }) {
     const location = useLocation();
@@ -49,7 +50,9 @@ function AdminSidebar({ isOpen, setIsOpen }) {
     const fetchEventStatus = async () => {
         try {
             const response = await fetch(`/api/admin/event/${eventId}/`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (response.ok) {
                 const data = await response.json();
@@ -81,7 +84,8 @@ function AdminSidebar({ isOpen, setIsOpen }) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'X-CSRFToken': getCsrfToken(),
+
                 },
                 body: JSON.stringify({ action })
             });
@@ -201,7 +205,7 @@ function AdminSidebar({ isOpen, setIsOpen }) {
                                     <span>Rules & Regulations</span>
                                 </Link>
                             </li>
-                            {eventObj && eventObj.created_by === user?.username && (
+                            {eventObj && (user?.is_staff || eventObj.created_by === user?.username) && (
                                 <li>
                                     <Link to={`/administration/event/${eventId}/edit`} className={isActive(`/administration/event/${eventId}/edit`)} onClick={() => setIsOpen(false)}>
                                         <span className="sidebar-icon"><FaEdit /></span>
@@ -384,7 +388,9 @@ function AdminSidebar({ isOpen, setIsOpen }) {
                                         onClick={async () => {
                                             try {
                                                 const res = await fetch(`/api/admin/event/${eventId}/export/`, {
-                                                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                                                    headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
                                                 });
                                                 if (res.ok) {
                                                     const blob = await res.blob();

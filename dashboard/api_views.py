@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
+
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncDate
 
@@ -40,7 +40,6 @@ def dashboard_events_api(request):
     
     return JsonResponse({'events': events_data})
 
-@csrf_exempt
 @login_required
 @require_POST
 def join_event_api(request, event_id):
@@ -118,7 +117,6 @@ def event_details_api(request, event_id):
     
     return JsonResponse(data)
 
-@csrf_exempt
 @login_required
 @require_POST
 def user_request_event_api(request):

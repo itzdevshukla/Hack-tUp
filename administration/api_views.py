@@ -1,4 +1,7 @@
 from ctf.utils import encode_id, decode_id
+from challenges.signals import emit_ws_event
+from challenges.signals import emit_ws_event
+from challenges.signals import emit_ws_event
 from django.http import JsonResponse
 from django.contrib.auth.models import User
 from django.db.models import Count, Sum, Min, Max
@@ -225,7 +228,6 @@ def admin_events_api(request):
 
 
 @login_required
-@csrf_exempt
 def admin_event_requests_api(request):
     if not is_admin(request.user):
         return JsonResponse({"error": "Forbidden"}, status=403)
@@ -250,7 +252,6 @@ def admin_event_requests_api(request):
 
 
 @login_required
-@csrf_exempt
 def admin_approve_event_api(request, event_id):
     if request.method != 'POST':
         return JsonResponse({"error": "Method not allowed"}, status=405)
@@ -277,7 +278,6 @@ def admin_approve_event_api(request, event_id):
 
 
 @login_required
-@csrf_exempt
 def admin_decline_event_api(request, event_id):
     if request.method != 'POST':
         return JsonResponse({"error": "Method not allowed"}, status=405)
@@ -296,7 +296,6 @@ def admin_decline_event_api(request, event_id):
 
 
 @login_required
-@csrf_exempt
 def admin_add_event_api(request):
     if not is_admin(request.user):
         return JsonResponse({"error": "Forbidden"}, status=403)
@@ -351,7 +350,6 @@ def admin_add_event_api(request):
 
 
 @login_required
-@csrf_exempt
 def admin_edit_event_api(request, event_id):
     if not is_admin(request.user, event_id=event_id):
         return JsonResponse({"error": "Forbidden"}, status=403)
@@ -405,7 +403,6 @@ def admin_edit_event_api(request, event_id):
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 @login_required
-@csrf_exempt
 def admin_event_control_api(request, event_id):
     if not is_admin(request.user, event_id=event_id):
         return JsonResponse({"error": "Forbidden"}, status=403)
@@ -562,7 +559,6 @@ def admin_event_detail_api(request, event_id):
 
 
 @login_required
-@csrf_exempt
 def admin_user_writeups_api(request, event_id, user_id):
     if not is_admin(request.user, event_id=event_id):
         return JsonResponse({"error": "Forbidden"}, status=403)
@@ -587,7 +583,6 @@ def admin_user_writeups_api(request, event_id, user_id):
         
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
-@csrf_exempt
 @login_required
 def admin_update_event_rules_api(request, event_id):
     if not is_admin(request.user, event_id=event_id):
@@ -611,7 +606,6 @@ def admin_update_event_rules_api(request, event_id):
 
 from django.views.decorators.csrf import csrf_exempt
 
-@csrf_exempt
 @login_required
 def admin_delete_user_api(request, user_id):
     if not is_admin(request.user):
@@ -629,7 +623,6 @@ def admin_delete_user_api(request, user_id):
             
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
-@csrf_exempt
 @login_required
 def admin_delete_event_api(request, event_id):
     if not is_admin(request.user, event_id=event_id):
@@ -645,7 +638,6 @@ def admin_delete_event_api(request, event_id):
             
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
-@csrf_exempt
 @login_required
 def admin_create_challenge_api(request, event_id):
     if not is_admin(request.user, event_id=event_id):
@@ -718,6 +710,9 @@ def admin_create_challenge_api(request, event_id):
                 if key.startswith("new_files"):
                     ChallengeAttachment.objects.create(challenge=challenge, file=uploaded_file)
 
+            emit_ws_event("challenge_updated", {"event_id": encode_id(event.id)})
+            emit_ws_event("challenge_updated", {"event_id": encode_id(event.id)})
+            emit_ws_event("challenge_updated", {"event_id": encode_id(event.id)})
             return JsonResponse({"message": "Challenge created successfully", "id": encode_id(challenge.id)}, status=201)
         except Exception as e:
             import traceback
@@ -727,7 +722,6 @@ def admin_create_challenge_api(request, event_id):
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 @login_required
 def admin_challenge_detail_api(request, event_id, challenge_id):
     if not is_admin(request.user, event_id=event_id):
@@ -825,6 +819,9 @@ def admin_challenge_detail_api(request, event_id, challenge_id):
                 challenge.flag = make_password(new_flag)
                 
             challenge.save()
+            emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
+            emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
+            emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
             return JsonResponse({"message": "Challenge updated successfully"})
         except Exception as e:
             import traceback
@@ -833,12 +830,14 @@ def admin_challenge_detail_api(request, event_id, challenge_id):
             
     elif request.method == "DELETE":
         challenge.delete()
+        emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
+        emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
+        emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
         return JsonResponse({"message": "Challenge deleted successfully"})
         
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 @login_required
 def admin_waves_api(request, event_id):
     """List all waves for an event (GET) or create a new wave (POST)."""
@@ -869,6 +868,9 @@ def admin_waves_api(request, event_id):
             if not name:
                 return JsonResponse({"error": "Wave name is required"}, status=400)
             wave = ChallengeWave.objects.create(event=event, name=name, order=order)
+            emit_ws_event("waves_updated", {"event_id": encode_id(event.id)})
+            emit_ws_event("waves_updated", {"event_id": encode_id(event.id)})
+            emit_ws_event("waves_updated", {"event_id": encode_id(event.id)})
             return JsonResponse({"id": encode_id(wave.id), "name": wave.name, "order": wave.order, "is_active": wave.is_active, "challenge_count": 0}, status=201)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
@@ -876,7 +878,6 @@ def admin_waves_api(request, event_id):
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 @login_required
 def admin_wave_detail_api(request, event_id, wave_id):
     """Toggle active (PUT), or delete a wave (DELETE)."""
@@ -913,18 +914,23 @@ def admin_wave_detail_api(request, event_id, wave_id):
                     created_by=request.user
                 )
                 
+            emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
+            emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
+            emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
             return JsonResponse({"id": encode_id(wave.id), "name": wave.name, "is_active": wave.is_active, "order": wave.order})
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
 
     if request.method == "DELETE":
         wave.delete()
+        emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
+        emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
+        emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
         return JsonResponse({"message": "Wave deleted successfully"})
 
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 @login_required
 def admin_wave_challenges_api(request, event_id, wave_id):
     """GET: all event challenges with assignment status. PUT: bulk-assign challenge IDs to this wave."""
@@ -958,6 +964,9 @@ def admin_wave_challenges_api(request, event_id, wave_id):
             Challenge.objects.filter(wave=wave).exclude(id__in=challenge_ids).update(wave=None)
             # Assign selected challenges to this wave
             Challenge.objects.filter(id__in=challenge_ids, event_id=event_id).update(wave=wave)
+            emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
+            emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
+            emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
             return JsonResponse({"message": "Challenges assigned successfully", "count": len(challenge_ids)})
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
@@ -966,7 +975,6 @@ def admin_wave_challenges_api(request, event_id, wave_id):
 
 
 
-@csrf_exempt
 @login_required
 def admin_import_users_api(request):
     if not is_admin(request.user):
@@ -1075,7 +1083,6 @@ def admin_import_users_api(request):
     events_data = [{"id": encode_id(e.id), "name": e.event_name} for e in events]
     return JsonResponse({"events": events_data})
 
-@csrf_exempt
 @login_required
 def admin_event_teams_api(request, event_id):
     if not is_admin(request.user, event_id=event_id):
@@ -1125,7 +1132,6 @@ def admin_event_teams_api(request, event_id):
         return JsonResponse({"error": "Event not found"}, status=404)
 
 
-@csrf_exempt
 @login_required
 def admin_event_participants_api(request, event_id):
     if not is_admin(request.user, event_id=event_id):
@@ -1164,7 +1170,6 @@ def admin_event_participants_api(request, event_id):
     except Event.DoesNotExist:
         return JsonResponse({"error": "Event not found"}, status=404)
 
-@csrf_exempt
 @login_required
 def admin_event_leaderboard_api(request, event_id):
     if not is_admin(request.user, event_id=event_id):
@@ -1285,7 +1290,6 @@ def admin_event_leaderboard_api(request, event_id):
         "leaderboard": leaderboard_data,
     })
 
-@csrf_exempt
 @login_required
 def admin_event_submissions_api(request, event_id):
     if not is_admin(request.user, event_id=event_id):
@@ -1348,7 +1352,6 @@ def admin_event_submissions_api(request, event_id):
     except Event.DoesNotExist:
         return JsonResponse({"error": "Event not found"}, status=404)
 
-@csrf_exempt
 @login_required
 def admin_user_event_submissions_api(request, event_id, user_id):
     if not is_admin(request.user, event_id=event_id):
@@ -1428,7 +1431,6 @@ def admin_user_event_submissions_api(request, event_id, user_id):
         return JsonResponse({"error": "Event or User not found"}, status=404)
 
 
-@csrf_exempt
 @login_required
 def admin_team_submissions_api(request, event_id, team_id):
     """
@@ -1506,7 +1508,6 @@ def admin_team_submissions_api(request, event_id, team_id):
     })
 
 
-@csrf_exempt
 @login_required
 def admin_toggle_ban_team_api(request, event_id, team_id):
     """
@@ -1556,7 +1557,6 @@ def admin_toggle_ban_team_api(request, event_id, team_id):
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 @login_required
 def admin_delete_team_api(request, event_id, team_id):
     """
@@ -1600,7 +1600,6 @@ def admin_delete_team_api(request, event_id, team_id):
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 @login_required
 def admin_toggle_ban_participant_api(request, event_id, user_id):
     if not request.user.is_authenticated:
@@ -1641,7 +1640,6 @@ def admin_toggle_ban_participant_api(request, event_id, user_id):
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 @login_required
 def admin_export_event_data_api(request, event_id):
     if not is_admin(request.user):
@@ -1755,7 +1753,6 @@ def admin_export_event_data_api(request, event_id):
     except Event.DoesNotExist:
         return JsonResponse({"error": "Event not found"}, status=404)
 
-@csrf_exempt
 @login_required
 def admin_event_roles_api(request, event_id):
     if not is_admin(request.user, event_id=event_id):
@@ -1833,7 +1830,6 @@ def admin_event_roles_api(request, event_id):
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 @login_required
 def admin_test_challenges_list_api(request, event_id):
     """
@@ -1880,7 +1876,6 @@ def admin_test_challenges_list_api(request, event_id):
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 @login_required
 def admin_test_challenge_flag_api(request, challenge_id):
     """
@@ -1919,7 +1914,6 @@ def admin_test_challenge_flag_api(request, challenge_id):
         return JsonResponse({"error": str(e)}, status=500)
 
 
-@csrf_exempt
 @login_required
 @require_POST
 def admin_create_announcement_api(request, event_id):
@@ -1974,7 +1968,6 @@ def admin_create_announcement_api(request, event_id):
         return JsonResponse({"error": str(e)}, status=500)
 
 
-@csrf_exempt
 @login_required
 @require_POST
 def admin_delete_announcement_api(request, event_id, announcement_id):

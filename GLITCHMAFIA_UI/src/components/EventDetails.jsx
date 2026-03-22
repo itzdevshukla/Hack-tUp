@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    FaCalendarAlt, FaClock, FaUsers, FaTrophy, FaGamepad, FaArrowLeft, FaKey
-} from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaUsers, FaTrophy, FaGamepad, FaArrowLeft, FaKey } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 const EventDetails = () => {
     const navigate = useNavigate();
@@ -52,7 +51,7 @@ const EventDetails = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1]
+                    'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify({ accessCode })
             });

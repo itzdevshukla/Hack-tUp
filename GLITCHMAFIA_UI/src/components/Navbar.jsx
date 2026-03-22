@@ -81,10 +81,7 @@ const Navbar = () => {
         location.pathname === '/profile';
 
     const isAdminPage = location.pathname.startsWith('/administration');
-    const isStandalonePage = location.pathname.startsWith('/classic-leaderboard');
 
-    // Hide entirely on standalone pages
-    if (isStandalonePage) return null;
 
     // 🔗 Define Link Sets
     let currentLinks = [];

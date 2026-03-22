@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { FaPlusCircle, FaTimes, FaSave, FaPuzzlePiece } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 const CATEGORIES = ['Web', 'Crypto', 'Reverse Engineering', 'Forensics', 'Pwn', 'Misc', 'OSINT'];
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
@@ -73,7 +74,9 @@ function AdminEventChallengeCreate() {
 
             const res = await fetch(`/api/admin/event/${id}/challenge/new/`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                },
                 body: payload
             });
 

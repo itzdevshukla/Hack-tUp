@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomAlert from './CustomAlert';
-
+import { getCsrfToken } from '../utils/csrf';
 
 const HostEvent = () => {
     const [formData, setFormData] = useState({
@@ -66,12 +66,11 @@ const HostEvent = () => {
         setIsLoading(true);
 
         try {
-            const token = localStorage.getItem('token');
             const res = await fetch('/api/user/request-event/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify(formData)
             });

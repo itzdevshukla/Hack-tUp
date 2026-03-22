@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FaFlag, FaPuzzlePiece, FaUsers, FaCalendarAlt, FaMapMarkerAlt, FaKey, FaClock, FaCopy } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminEventDetail() {
     const { id } = useParams();
@@ -23,7 +24,9 @@ function AdminEventDetail() {
     const fetchEventDetail = async () => {
         try {
             const response = await fetch(`/api/admin/event/${id}/`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!response.ok) throw new Error('Failed to fetch event details');
             const data = await response.json();

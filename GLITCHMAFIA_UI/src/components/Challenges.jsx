@@ -63,8 +63,8 @@ const Challenges = () => {
             ws.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
-                    if (message.type === 'leaderboard_update') {
-                        // Refresh challenges to update local solve counts dynamically
+                    if (message.type === 'leaderboard_update' || message.type === 'challenge_updated' || message.type === 'waves_updated') {
+                        // Refresh challenges when events occur (leaderboard updates, challenge add/edit/delete, wave open/close)
                         fetchChallenges();
                     }
                 } catch (err) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import CustomAlert from './CustomAlert';
 import { FaPlusCircle, FaTrash, FaPlay, FaPause, FaWater, FaChevronDown, FaChevronUp, FaCheck, FaLock, FaBolt } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 // ── Category colour map ──────────────────────────────────────────
 const CAT_STYLE = {
@@ -40,7 +41,7 @@ export default function AdminEventWaves() {
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertConfig, setAlertConfig] = useState({});
 
-    const H = { 'Authorization': `Bearer ${localStorage.getItem('token')}` };
+    const H = {  };
 
     /* ── Data fetching ──────────────────────────────────────────── */
     const fetchWaves = useCallback(async () => {
@@ -79,7 +80,8 @@ export default function AdminEventWaves() {
         try {
             const r = await fetch(`/api/admin/event/${id}/waves/`, {
                 method: 'POST',
-                headers: { ...H, 'Content-Type': 'application/json' },
+                headers: { ...H, 'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken() },
                 body: JSON.stringify({ name: newWaveName.trim(), order: waves.length })
             });
             const w = await r.json();
@@ -101,7 +103,8 @@ export default function AdminEventWaves() {
             onConfirm: async () => {
                 setAlertOpen(false);
                 await fetch(`/api/admin/event/${id}/wave/${wave.id}/`, {
-                    method: 'PUT', headers: { ...H, 'Content-Type': 'application/json' },
+                    method: 'PUT', headers: { ...H, 'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken() },
                     body: JSON.stringify({ is_active: next })
                 });
                 setWaves(p => p.map(w => w.id === wave.id ? { ...w, is_active: next } : w));
@@ -155,7 +158,8 @@ export default function AdminEventWaves() {
         setSaving(true);
         try {
             await fetch(`/api/admin/event/${id}/wave/${pickingForWave}/challenges/`, {
-                method: 'PUT', headers: { ...H, 'Content-Type': 'application/json' },
+                method: 'PUT', headers: { ...H, 'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken() },
                 body: JSON.stringify({ challenge_ids: Array.from(selectedIds) })
             });
             setWaves(p => p.map(w => w.id === pickingForWave ? { ...w, challenge_count: selectedIds.size } : w));

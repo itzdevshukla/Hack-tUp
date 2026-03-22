@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaPencilAlt, FaChevronDown, FaChevronUp, FaCheckCircle, FaLock, FaTimes } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 function EventWriteUps() {
     const { id } = useParams();
@@ -61,7 +62,7 @@ function EventWriteUps() {
                 credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1] || ''
+                    'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify({ challenge_id: challengeId, content: writeups[challengeId] || '' })
             });

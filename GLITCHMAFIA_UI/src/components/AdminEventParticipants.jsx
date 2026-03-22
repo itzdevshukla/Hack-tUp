@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FaUsers, FaArrowLeft, FaBan, FaUnlock, FaExclamationTriangle } from 'react-icons/fa';
+import { getCsrfToken } from '../utils/csrf';
 
 /* ── Custom Ban/Unban Confirmation Modal ──────────────────────── */
 function BanConfirmModal({ user, isBanned, onConfirm, onCancel, loading }) {
@@ -75,7 +76,9 @@ function AdminEventParticipants() {
         const fetchParticipants = async () => {
             try {
                 const response = await fetch(`/api/admin/event/${id}/participants/`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
                 });
                 if (!response.ok) throw new Error('Failed to fetch participants');
                 const result = await response.json();
@@ -99,7 +102,9 @@ function AdminEventParticipants() {
         try {
             const response = await fetch(`/api/admin/event/${id}/participant/${user.id}/ban/`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
             });
             if (!response.ok) throw new Error('Failed to toggle ban status');
             const result = await response.json();

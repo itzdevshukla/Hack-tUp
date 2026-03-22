@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { FaArrowLeft, FaCheck, FaTimes, FaTrophy, FaStar, FaUser, FaCrosshairs, FaExchangeAlt, FaSearch, FaBullseye, FaBan, FaDownload, FaPencilAlt, FaEye, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import CustomAlert from './CustomAlert';
+import { getCsrfToken } from '../utils/csrf';
 
 function AdminEventUserDetail() {
     const { id, userId } = useParams();
@@ -41,7 +42,7 @@ function AdminEventUserDetail() {
         setWriteupsModal(true);
         setWriteupsLoading(true);
         try {
-            const headers = { 'Authorization': `Bearer ${localStorage.getItem('token')}` };
+            const headers = {  };
             const res = await fetch(`/api/admin/event/${id}/user/${userId}/writeups/`, { headers });
             const data = await res.json();
             if (res.ok) {
@@ -55,7 +56,7 @@ function AdminEventUserDetail() {
     };
 
     useEffect(() => {
-        const headers = { 'Authorization': `Bearer ${localStorage.getItem('token')}` };
+        const headers = {  };
         Promise.all([
             fetch(`/api/admin/event/${id}/leaderboard/`, { headers }),
             fetch(`/api/admin/event/${id}/leaderboard/${userId}/submissions/`, { headers })
@@ -84,7 +85,7 @@ function AdminEventUserDetail() {
         setCompareLoading(true);
         setCompareError('');
         try {
-            const headers = { 'Authorization': `Bearer ${localStorage.getItem('token')}` };
+            const headers = {  };
             const res = await fetch(`/api/admin/event/${id}/leaderboard/${rival.user_id}/submissions/`, { headers });
             const data = await res.json();
             const subs = data.submissions || [];
@@ -368,7 +369,9 @@ function AdminEventUserDetail() {
                                 try {
                                     const res = await fetch(`/api/admin/event/${id}/participant/${userId}/ban/`, {
                                         method: 'POST',
-                                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                                        headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
                                     });
                                     const data = await res.json();
                                     if (res.ok) setIsBanned(data.is_banned);
