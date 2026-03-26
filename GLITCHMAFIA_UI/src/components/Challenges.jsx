@@ -6,6 +6,7 @@ import {
     FaBug, FaCode, FaDatabase, FaShieldAlt, FaBan, FaGavel,
     FaArrowRight, FaStar, FaEye
 } from 'react-icons/fa';
+import BannedAnimation from './BannedAnimation';
 import './Challenges.css';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
@@ -176,13 +177,7 @@ const Challenges = () => {
         </div>
     );
 
-    if (isBanned) return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem', textAlign: 'center', fontFamily: 'Orbitron, sans-serif' }}>
-            <FaBan style={{ fontSize: '3.5rem', color: '#f44336', opacity: 0.6 }} />
-            <h1 style={{ margin: 0, color: '#f44336', fontSize: '1.8rem', letterSpacing: '2px' }}>ACCESS TERMINATED</h1>
-            <p style={{ color: '#888', maxWidth: '480px', lineHeight: 1.6, fontFamily: 'Inter, sans-serif', fontWeight: 'normal' }}>You are banned from this event. Contact the organizers for details.</p>
-        </div>
-    );
+    if (isBanned) return <BannedAnimation />;
 
     return (
         <div className="challenges-page">
@@ -379,7 +374,7 @@ const Challenges = () => {
 
                                         {/* Points */}
                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
-                                            <span style={{ fontSize: '2.4rem', fontWeight: 700, color: ch.is_solved ? ACCENT : '#e8e8e8', fontFamily: "'Playfair Display', serif", lineHeight: 1, letterSpacing: '-0.5px' }}>
+                                            <span style={{ fontSize: '2.4rem', fontWeight: 800, color: ch.is_solved ? ACCENT : '#e8e8e8', fontFamily: "'Rajdhani', sans-serif", lineHeight: 1, letterSpacing: '1px', textShadow: ch.is_solved ? `0 0 10px ${ACCENT}80` : 'none' }}>
                                                 {ch.points}
                                             </span>
                                             <span style={{ fontSize: '0.75rem', color: '#555', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>pts</span>

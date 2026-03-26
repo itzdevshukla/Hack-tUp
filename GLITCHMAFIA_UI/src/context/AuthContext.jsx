@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
         checkStatus();
     }, []);
 
-    const loginUser = async (e) => {
+    const loginUser = async (e, onError) => {
         e.preventDefault();
         const username = e.target.username.value;
         const password = e.target.password.value;
@@ -78,11 +78,13 @@ export const AuthProvider = ({ children }) => {
                     navigate('/dashboard');
                 }
             } else {
-                alert(data.error || 'Login failed');
+                const msg = data.error || 'Login failed';
+                if (onError) onError(msg);
+                else console.error(msg);
             }
         } catch (error) {
             console.error("Login flow error", error);
-            alert("Login error");
+            if (onError) onError('Connection error. Please try again.');
         }
     };
 

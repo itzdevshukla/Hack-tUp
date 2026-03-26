@@ -25,6 +25,10 @@ const UserChallengeDetail = () => {
     const [eventStatus, setEventStatus] = useState('live');
     const [eventName, setEventName] = useState('Loading...');
     const [isTeamMode, setIsTeamMode] = useState(false);
+    const [showHintModal, setShowHintModal] = useState(false);
+    const [selectedHint, setSelectedHint] = useState(null);
+    const [unlockingStatus, setUnlockingStatus] = useState('idle'); // 'idle', 'unlocking', 'success', 'error'
+    const [modalError, setModalError] = useState(null);
 
     // Audio reference for incorrect submission
     const errorAudioRef = useRef(null);
@@ -153,10 +157,20 @@ const UserChallengeDetail = () => {
         }
     };
 
-    const unlockHint = async (hintId, cost) => {
-        if (!window.confirm(`Unlock this hint for ${cost} points?`)) return;
+    const startUnlockHint = (hint) => {
+        setSelectedHint(hint);
+        setShowHintModal(true);
+        setUnlockingStatus('idle');
+        setModalError(null);
+    };
+
+    const confirmUnlockHint = async () => {
+        if (!selectedHint) return;
+        setUnlockingStatus('unlocking');
+        setModalError(null);
+        
         try {
-            const res = await fetch(`/api/hint/${hintId}/unlock/`, {
+            const res = await fetch(`/api/hint/${selectedHint.id}/unlock/`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCsrfToken()
@@ -164,14 +178,22 @@ const UserChallengeDetail = () => {
             });
             const data = await res.json();
             if (data.success) {
-                setChallenge(prev => ({
-                    ...prev,
-                    hints: prev.hints.map(h => h.id === hintId ? { ...h, is_unlocked: true, content: data.hint_content } : h)
-                }));
+                setUnlockingStatus('success');
+                setTimeout(() => {
+                    setChallenge(prev => ({
+                        ...prev,
+                        hints: prev.hints.map(h => h.id === selectedHint.id ? { ...h, is_unlocked: true, content: data.hint_content } : h)
+                    }));
+                    setShowHintModal(false);
+                }, 1000);
             } else {
-                alert(data.error || 'Failed to unlock hint.');
+                setUnlockingStatus('error');
+                setModalError(data.error || 'Failed to unlock hint.');
             }
-        } catch { }
+        } catch (err) {
+            setUnlockingStatus('error');
+            setModalError('Network error. Try again.');
+        }
     };
 
     if (loading) return (
@@ -461,7 +483,7 @@ const UserChallengeDetail = () => {
                                             </div>
                                         ) : (
                                             <button
-                                                onClick={() => unlockHint(hint.id, hint.cost)}
+                                                onClick={() => startUnlockHint(hint)}
                                                 style={{ width: '100%', padding: '12px', background: 'transparent', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: '8px', color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', fontSize: '0.9rem', fontWeight: 500 }}
                                                 onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#fff'; }}
                                                 onMouseLeave={e => { e.currentTarget.style.color = '#888'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; }}
@@ -510,6 +532,79 @@ const UserChallengeDetail = () => {
                     </div>
                 </div>
             </main>
+            {/* Custom Hint Unlock Modal */}
+            <AnimatePresence>
+                {showHintModal && (
+                    <motion.div
+                        className="hint-modal-overlay"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => unlockingStatus !== 'unlocking' && setShowHintModal(false)}
+                    >
+                        <motion.div
+                            className="hint-modal-card"
+                            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                            animate={{ scale: 1, y: 0, opacity: 1 }}
+                            exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="hint-modal-header">
+                                <div className="hint-modal-icon">
+                                    <FaLock size={18} />
+                                </div>
+                                <div className="hint-modal-title">Intel Decryption</div>
+                            </div>
+
+                            <div className="hint-modal-body">
+                                Accessing this classified intel requires a point exchange. 
+                                <br />
+                                Cost: <span className="hint-modal-cost">{selectedHint?.cost} Points</span>
+                                <br /><br />
+                                Do you wish to proceed with the decryption?
+                            </div>
+
+                            {unlockingStatus === 'unlocking' && (
+                                <div className="decryption-status">
+                                    {'>'} DECRYPTING_HASH_SEQUENCE...
+                                    <div className="decryption-loader">
+                                        <div className="decryption-loader-bar"></div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {unlockingStatus === 'error' && (
+                                <div style={{ color: '#EF4444', fontSize: '0.85rem', marginBottom: '15px', padding: '10px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <FaExclamationTriangle /> {modalError}
+                                </div>
+                            )}
+
+                            {unlockingStatus === 'success' && (
+                                <div style={{ color: '#4ADE80', fontSize: '0.85rem', marginBottom: '15px', padding: '10px', background: 'rgba(74, 222, 128, 0.1)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <FaCheckCircle /> Decryption Successful. Intel Revealed.
+                                </div>
+                            )}
+
+                            <div className="hint-modal-actions">
+                                <button 
+                                    className="btn-hint-cancel" 
+                                    onClick={() => setShowHintModal(false)}
+                                    disabled={unlockingStatus === 'unlocking'}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    className="btn-hint-unlock"
+                                    onClick={confirmUnlockHint}
+                                    disabled={unlockingStatus === 'unlocking' || unlockingStatus === 'success'}
+                                >
+                                    {unlockingStatus === 'unlocking' ? 'Decrypting...' : 'Confirm Unlock'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

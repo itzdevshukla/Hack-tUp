@@ -6,6 +6,9 @@ import Home from './components/Home';
 import About from './components/About';
 import OurTeam from './components/OurTeam';
 import Login from './components/Login';
+import BannedAnimation from './components/BannedAnimation';
+import BackgroundParticles from './components/BackgroundParticles';
+import './components/Dashboard.css';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import HostEvent from './components/HostEvent';
@@ -60,9 +63,14 @@ const TeamSectionWrapper = () => {
 
   if (eventData && !eventData.is_team_mode) {
     return (
-      <div style={{ padding: '3rem', textAlign: 'center', color: '#ff4d4d', fontFamily: 'Orbitron', fontSize: '1.2rem' }}>
+        <div style={{ position: 'relative', minHeight: '100vh', backgroundColor: '#050505' }}>
+            <BackgroundParticles />
+            <div style={{ paddingTop: '100px', paddingBottom: '2rem', width: '100%', boxSizing: 'border-box', position: 'relative', zIndex: 1 }}>
+        <div style={{ padding: '3rem', textAlign: 'center', color: '#ff4d4d', fontFamily: 'Orbitron', fontSize: '1.2rem' }}>
         TEAM MODE IS DISABLED FOR THIS EVENT.
       </div>
+            </div>
+        </div>
     );
   }
 
@@ -95,7 +103,11 @@ function App() {
               <Profile />
             </UserDashboardLayout>
           } />
-          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/leaderboard" element={
+            <UserDashboardLayout>
+              <Leaderboard />
+            </UserDashboardLayout>
+          } />
 
           {/* Event Details page (before joining) */}
           <Route path="/event/:id" element={

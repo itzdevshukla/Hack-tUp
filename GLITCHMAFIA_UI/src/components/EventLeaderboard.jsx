@@ -22,85 +22,7 @@ function initials(name = '') {
 /* ─────────────────────────────────────────────────────────────────
    BACKGROUND — animated dot grid + HACK!TUP watermark
 ───────────────────────────────────────────────────────────────── */
-function Background() {
-    const canvasRef = useRef(null);
-    const animRef = useRef(null);
 
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        let W = (canvas.width = window.innerWidth);
-        let H = (canvas.height = window.innerHeight);
-        const resize = () => {
-            W = canvas.width = window.innerWidth;
-            H = canvas.height = window.innerHeight;
-        };
-        window.addEventListener('resize', resize);
-
-        const pts = Array.from({ length: 70 }, () => ({
-            x: Math.random() * W,
-            y: Math.random() * H,
-            vx: (Math.random() - 0.5) * 0.25,
-            vy: (Math.random() - 0.5) * 0.25,
-            r: Math.random() * 1.6 + 0.4,
-        }));
-
-        const tick = () => {
-            ctx.clearRect(0, 0, W, H);
-            pts.forEach(p => {
-                p.x += p.vx; p.y += p.vy;
-                if (p.x < 0 || p.x > W) p.vx *= -1;
-                if (p.y < 0 || p.y > H) p.vy *= -1;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(154,205,50,0.45)';
-                ctx.fill();
-            });
-            for (let i = 0; i < pts.length; i++) {
-                for (let j = i + 1; j < pts.length; j++) {
-                    const dx = pts[i].x - pts[j].x;
-                    const dy = pts[i].y - pts[j].y;
-                    const d = Math.sqrt(dx * dx + dy * dy);
-                    if (d < 120) {
-                        ctx.beginPath();
-                        ctx.moveTo(pts[i].x, pts[i].y);
-                        ctx.lineTo(pts[j].x, pts[j].y);
-                        ctx.strokeStyle = `rgba(154,205,50,${0.12 * (1 - d / 120)})`;
-                        ctx.lineWidth = 0.6;
-                        ctx.stroke();
-                    }
-                }
-            }
-            animRef.current = requestAnimationFrame(tick);
-        };
-        tick();
-        return () => { cancelAnimationFrame(animRef.current); window.removeEventListener('resize', resize); };
-    }, []);
-
-    return (
-        <>
-            <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: 'linear-gradient(135deg, #000 0%, #080808 40%, #050a05 100%)', pointerEvents: 'none' }} />
-            <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none' }} />
-            <div style={{ position: 'fixed', inset: 0, zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', overflow: 'hidden' }}>
-                <div style={{
-                    fontSize: 'clamp(7rem, 20vw, 20rem)',
-                    fontWeight: 900,
-                    fontFamily: "'Orbitron', sans-serif",
-                    color: 'transparent',
-                    WebkitTextStroke: '1.5px rgba(154,205,50,0.055)',
-                    letterSpacing: '0.04em',
-                    transform: 'rotate(-20deg)',
-                    userSelect: 'none',
-                    whiteSpace: 'nowrap',
-                    lineHeight: 1,
-                }}>
-                    HACK!TUP
-                </div>
-            </div>
-        </>
-    );
-}
 
 /* ─────────────────────────────────────────────────────────────────
    PODIUM PANEL — top 3 Graphical Layout
@@ -248,8 +170,11 @@ export default function EventLeaderboard() {
     const [lastUpdated, setLastUpdated] = useState(null);
 
     const debounceRef = useRef(null);
-    const outletCtx = useOutletContext();
+    // useOutletContext can be null when opened in a new tab (presentation mode)
+    let outletCtx = null;
+    try { outletCtx = useOutletContext(); } catch { outletCtx = null; }
     const lastWsEvent = outletCtx?.lastWsEvent;
+
 
     const fetchData = useCallback(async (silent = false) => {
         if (!silent) setLoading(true);
@@ -290,7 +215,7 @@ export default function EventLeaderboard() {
 
     return (
         <div style={{ minHeight: '100vh', fontFamily: "'Inter', sans-serif", color: '#fff', position: 'relative', overflow: 'hidden' }}>
-            <Background />
+            {/* Background is now provided by EventArenaLayout */}
 
             <div style={{ position: 'relative', zIndex: 2, padding: 'clamp(1.2rem, 3vw, 2.5rem)', maxWidth: '1400px', margin: '0 auto', paddingBottom: '4rem' }}>
 

@@ -345,3 +345,169 @@
         font-size: 1rem !important;
     }
 }
+
+/* ── Custom Hint Modal ── */
+.hint-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.hint-modal-card {
+    width: 100%;
+    max-width: 450px;
+    background: linear-gradient(145deg, rgba(20, 20, 20, 0.9), rgba(10, 10, 10, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: clamp(1.5rem, 5vw, 2rem);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.hint-modal-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #4ADE80, transparent);
+}
+
+.hint-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.hint-modal-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4ADE80;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hint-modal-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #fff;
+    text-transform: uppercase;
+}
+
+.hint-modal-body {
+    margin-bottom: 30px;
+    color: #a0a0a0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.hint-modal-cost {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(245, 158, 11, 0.1);
+    color: #F59E0B;
+    border-radius: 6px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    margin: 0 4px;
+}
+
+.hint-modal-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.btn-hint-cancel {
+    flex: 1;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #888;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-hint-cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.btn-hint-unlock {
+    flex: 2;
+    padding: 12px;
+    background: #4ADE80;
+    border: none;
+    color: #000;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
+}
+
+.btn-hint-unlock:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(74, 222, 128, 0.4);
+}
+
+.btn-hint-unlock:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.decryption-status {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: #4ADE80;
+}
+
+.decryption-loader {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.decryption-loader-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: #4ADE80;
+    width: 0%;
+    animation: decryptProgress 2s infinite ease-in-out;
+}
+
+@keyframes decryptProgress {
+    0% { width: 0%; left: 0; }
+    50% { width: 70%; left: 15%; }
+    100% { width: 0%; left: 100%; }
+}

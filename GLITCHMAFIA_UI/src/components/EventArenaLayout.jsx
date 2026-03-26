@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, Navigate, useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+
 import { useAuth } from '../context/AuthContext';
 import { FaBullhorn, FaTimes, FaChevronDown, FaChevronUp, FaInfoCircle, FaExclamationTriangle, FaBan, FaCheckCircle, FaClock, FaRegBell } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
+import BannedAnimation from './BannedAnimation';
+import BackgroundParticles from './BackgroundParticles';
 import './Dashboard.css';
 import { getCsrfToken } from '../utils/csrf';
 
@@ -10,11 +13,14 @@ function EventArenaLayout({ children }) {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const [searchParams] = useSearchParams();
+    const hideNavbar = searchParams.get('hideNavbar') === 'true';
     const { user, loading: authLoading } = useAuth();
 
     const [eventLoading, setEventLoading] = useState(true);
     const [teamRequired, setTeamRequired] = useState(false);
     const [hasTeam, setHasTeam] = useState(false);
+    const [isBanned, setIsBanned] = useState(false);
 
     // Announcements state
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -34,6 +40,7 @@ function EventArenaLayout({ children }) {
                 if (res.ok) {
                     const data = await res.json();
                     setTeamRequired(data.is_team_mode || false);
+                    setIsBanned(data.is_banned || false);
 
                     if (data.is_team_mode) {
                         // If it's team mode, check if the user actually has a team
@@ -55,14 +62,16 @@ function EventArenaLayout({ children }) {
     }, [id]);
 
     useEffect(() => {
-        // Enforce redirect if they are in a team event, have no team, and try to access challenges/leaderboard
+        // In presentation mode (hideNavbar=true), skip team-check redirects
+        // so admins can view the leaderboard without being event participants
+        if (hideNavbar) return;
         if (!eventLoading && teamRequired && !hasTeam) {
             const isTeamPage = location.pathname.endsWith(`/event/${id}/team`) || location.pathname.endsWith(`/event/${id}/team/`);
             if (!isTeamPage) {
                 navigate(`/event/${id}/team`, { replace: true });
             }
         }
-    }, [eventLoading, teamRequired, hasTeam, location.pathname, id, navigate]);
+    }, [hideNavbar, eventLoading, teamRequired, hasTeam, location.pathname, id, navigate]);
 
     // Announcements Polling
     useEffect(() => {
@@ -132,7 +141,8 @@ function EventArenaLayout({ children }) {
     };
 
     if (authLoading || eventLoading) return <div className="loading-screen" style={{ color: '#9ACD32', fontFamily: 'Orbitron', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#050505' }}>INITIALIZING ARENA...</div>;
-    if (!user) return <Navigate to="/login" replace />;
+    // In presentation mode, skip auth check so admins can view without being logged in as participant
+    if (!hideNavbar && !user) return <Navigate to="/login" replace />;
 
     const getTypeIcon = (type) => {
         switch (type) {
@@ -155,42 +165,79 @@ function EventArenaLayout({ children }) {
     };
 
     return (
-        <>
-            <div style={{ paddingTop: '100px', paddingBottom: '2rem', width: '100%', boxSizing: 'border-box' }}>
-                {children || <Outlet context={{ announcements, announcementsLoading, lastWsEvent }} />}
+        <div style={{ position: 'relative', minHeight: '100vh', backgroundColor: '#050505' }}>
+            <BackgroundParticles />
+            <div style={{ paddingTop: hideNavbar ? '0px' : '100px', paddingBottom: '2rem', width: '100%', boxSizing: 'border-box', position: 'relative', zIndex: 1 }}>
+                {isBanned ? (
+                    <BannedAnimation />
+                ) : (
+                    children || <Outlet context={{ announcements, announcementsLoading, lastWsEvent }} />
+                )}
             </div>
 
-            {/* ─── Announcement Button ─── */}
+            {/* ─── Circular Announcement Button ─── */}
             <button
                 onClick={handleOpenNotifications}
                 style={{
                     position: 'fixed',
-                    bottom: '20px',
-                    right: '20px',
+                    bottom: '24px',
+                    right: '24px',
                     zIndex: 1000,
-                    height: '44px',
-                    padding: '0 12px 0 16px',
-                    borderRadius: '8px',
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
                     background: '#09090b',
-                    border: '1px solid #27272a',
+                    border: '2px solid #27272a',
                     color: '#fff',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '16px',
+                    justifyContent: 'center',
                     cursor: 'pointer',
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.6)',
                     outline: 'none',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                className="notification-toggle-btn"
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#9ACD32';
+                    e.currentTarget.style.boxShadow = '0 0 20px rgba(154, 205, 50, 0.2)';
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#27272a';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.6)';
+                    e.currentTarget.style.transform = 'scale(1)';
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <FaRegBell style={{ fontSize: '1.05rem', marginTop: '-1px' }} />
-                    <span style={{ fontSize: '0.95rem', fontWeight: 500 }}>Announcements</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <FaChevronDown style={{ fontSize: '0.7rem', color: '#a1a1aa' }} />
-                    <div style={{ width: '1px', height: '14px', background: '#27272a' }}></div>
-                    <FaTimes style={{ fontSize: '0.95rem', color: '#a1a1aa' }} onClick={(e) => { e.stopPropagation(); setIsNotificationOpen(false); }} />
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FaRegBell style={{ fontSize: '1.4rem' }} />
+                    {unreadCount > 0 && (
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            style={{
+                                position: 'absolute',
+                                top: '-10px',
+                                right: '-10px',
+                                background: '#ff4c4c',
+                                color: 'white',
+                                borderRadius: '50%',
+                                minWidth: '20px',
+                                height: '20px',
+                                padding: '0 4px',
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '2px solid #09090b',
+                                boxShadow: '0 0 10px rgba(255, 76, 76, 0.4)',
+                                fontFamily: 'Share Tech Mono, monospace'
+                            }}
+                        >
+                            {unreadCount}
+                        </motion.div>
+                    )}
                 </div>
             </button>
 
@@ -301,7 +348,7 @@ function EventArenaLayout({ children }) {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </>
+        </div>
     );
 }
 

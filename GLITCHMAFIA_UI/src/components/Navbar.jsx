@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import AuthContext from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { FaBars, FaTimes, FaUserAstronaut, FaSignOutAlt, FaCogs } from 'react-icons/fa';
 import './Navbar.css';
 
@@ -10,6 +10,8 @@ const Navbar = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const { user, logoutUser } = useContext(AuthContext);
     const location = useLocation();
+    const [searchParams] = useSearchParams();
+    const hideNavbar = searchParams.get('hideNavbar') === 'true';
 
     // 🗓️ Event Status State
     const [eventStatus, setEventStatus] = useState(null);
@@ -128,6 +130,7 @@ const Navbar = () => {
         }
     };
 
+    if (hideNavbar) return null;
     return (
         <nav className={`premium-navbar ${scrolled ? 'scrolled' : ''} ${isAdminPage ? 'admin-mode' : ''}`}>
             <div className="premium-nav-container">

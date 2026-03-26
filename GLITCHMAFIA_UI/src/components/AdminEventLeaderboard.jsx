@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { FaTrophy, FaArrowLeft, FaEye, FaTimes, FaCheck, FaUsers, FaCrown, FaUser, FaShieldAlt, FaBan } from 'react-icons/fa';
 import CustomAlert from './CustomAlert';
+import { getCsrfToken } from '../utils/csrf';
+
 
 /* ─── tiny shared helpers ─────────────────────────────────────────── */
-const headers = () => ({  });
+const headers = () => ({
+    'X-CSRFToken': getCsrfToken(),
+    'Content-Type': 'application/json'
+});
 
 const RankBadge = ({ rank }) => {
     const color = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#555';
@@ -522,8 +527,11 @@ function AdminEventLeaderboard() {
         try {
             const res = await fetch(`/api/admin/event/${id}/leaderboard/`, { headers: headers() });
             if (!res.ok) throw new Error('Failed to fetch leaderboard');
-            setData(await res.json());
+            const result = await res.json();
+            console.log("Leaderboard Data:", result);
+            setData(result);
         } catch (err) {
+            console.error("Leaderboard Fetch Error:", err);
             setError(err.message);
         } finally {
             setLoading(false);
@@ -534,28 +542,50 @@ function AdminEventLeaderboard() {
         fetchData();
     }, [id]);
 
-    if (loading) return <div className="loading-text">Loading Leaderboard...</div>;
-    if (error) return <div className="error-text">Error: {error}</div>;
+    if (loading) return (
+        <div className="admin-loading" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#00ff41', fontFamily: 'Orbitron' }}>
+            <div className="neural-spinner" style={{ border: '2px solid rgba(0,255,65,0.1)', borderTopColor: '#00ff41', borderRadius: '50%', width: '40px', height: '40px', animation: 'fa-spin 1s linear infinite', marginBottom: '15px' }}></div>
+            INITIALIZING LEADERBOARD LINK...
+        </div>
+    );
+
+    if (error) return (
+        <div className="admin-error" style={{ padding: '40px', textAlign: 'center', color: '#ff3b30', fontFamily: 'Orbitron' }}>
+            <FaTimes style={{ fontSize: '3rem', marginBottom: '20px' }} />
+            <h2 style={{ marginBottom: '10px' }}>ACCESS DENIED / SYSTEM ERROR</h2>
+            <code>{error}</code>
+            <div style={{ marginTop: '20px' }}>
+                <button onClick={() => window.location.reload()} style={{ background: 'transparent', border: '1px solid #ff3b30', color: '#ff3b30', padding: '10px 20px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    RETRY SYSTEM LINK
+                </button>
+            </div>
+        </div>
+    );
 
     return (
         <>
-            <div className="admin-content-header" style={{ marginBottom: 20, minWidth: 0, paddingRight: 20 }}>
-                <h1 style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', fontSize: 'clamp(1.1rem, 3.5vw, 2rem)' }}>
-                    Admin Leaderboard: {data.event_name}
-                    {data.is_team_mode && (
-                        <span style={{
-                            marginLeft: 12, fontSize: '0.65rem', verticalAlign: 'middle',
-                            background: 'rgba(0,191,255,0.12)', border: '1px solid rgba(0,191,255,0.4)',
-                            color: '#00bfff', borderRadius: 12, padding: '3px 12px',
-                            fontFamily: 'monospace', letterSpacing: 1
-                        }}>TEAM MODE</span>
-                    )}
-                </h1>
-                <p className="admin-content-subtitle">
-                    <Link to={`/administration/event/${id}`} style={{ color: '#00ff41', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <FaArrowLeft /> Back to Event
-                    </Link>
-                </p>
+            <div className="admin-content-header" style={{ marginBottom: 20, minWidth: 0, paddingRight: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <h1 style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', fontSize: 'clamp(1.1rem, 3.5vw, 2rem)', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        Admin Leaderboard: {data.event_name}
+                        {data.is_team_mode && (
+                            <span style={{
+                                fontSize: '0.65rem', verticalAlign: 'middle',
+                                background: 'rgba(0,191,255,0.12)', border: '1px solid rgba(0,191,255,0.4)',
+                                color: '#00bfff', borderRadius: 12, padding: '3px 12px',
+                                fontFamily: 'monospace', letterSpacing: 1
+                            }}>TEAM MODE</span>
+                        )}
+                    </h1>
+                    <p className="admin-content-subtitle">
+                        <Link to={`/administration/event/${id}`} style={{ color: '#00ff41', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <FaArrowLeft /> Back to Event
+                        </Link>
+                    </p>
+                </div>
+                <Link to={`/event/${id}/leaderboard?hideNavbar=true`} target="_blank" style={{ background: 'rgba(154,205,50,0.1)', border: '1px solid #9ACD32', color: '#9ACD32', padding: '8px 16px', borderRadius: '4px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold', transition: 'all 0.2s', boxShadow: '0 0 10px rgba(154,205,50,0.2)', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    LeaderBoard 📺
+                </Link>
             </div>
 
             {/* is_team_mode is always determined by the server response, not any client flag */}

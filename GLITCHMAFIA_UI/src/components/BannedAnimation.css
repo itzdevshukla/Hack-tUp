@@ -1,0 +1,141 @@
+.banned-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: 'Orbitron', sans-serif;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.dark-gradient-overlay {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.8) 100%);
+    z-index: 1;
+}
+
+.red-pulsing-alerts {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(244, 67, 54, 0.1) 0%, transparent 70%);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.prisoner-container {
+    position: absolute;
+    z-index: 10;
+    pointer-events: none;
+    transition: all 0.5s ease-in-out;
+    width: min(90vw, 480px);
+    height: min(65vh, 520px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Responsive Positioning for Prisoner */
+@media (max-width: 768px) {
+    .prisoner-container {
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+    }
+}
+
+@media (min-width: 769px) {
+    .prisoner-container {
+        top: 20%;
+        left: 35%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+.prisoner-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 30px rgba(0, 0, 0, 0.8)) brightness(0.8) contrast(1.2);
+    mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+}
+
+.digital-overlay {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, transparent 1px, transparent 2px);
+    background-size: 100% 3px;
+    pointer-events: none;
+    z-index: 11;
+}
+
+.banned-stamp {
+    position: absolute;
+    top: 40%;
+    left: 15%;
+    padding: 10px 30px;
+    border: 8px solid #ff4c4c;
+    color: #ff4c4c;
+    font-size: clamp(2rem, 8vw, 3.5rem);
+    font-weight: 900;
+    text-transform: uppercase;
+    background: rgba(0,0,0,0.4);
+    z-index: 12;
+    transform: rotate(-15deg);
+    white-space: nowrap;
+}
+
+.jail-bars-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: space-around;
+    padding: 0 5vw;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.vertical-bar {
+    height: 100%;
+    width: min(20px, 3vw);
+    background: linear-gradient(90deg, #1a1a1a 0%, #333 50%, #1a1a1a 100%);
+    box-shadow: inset 2px 0 5px rgba(0,0,0,0.5), 5px 0 15px rgba(0,0,0,0.3);
+    border-left: 1px solid rgba(255,255,255,0.05);
+    border-right: 1px solid rgba(0,0,0,0.5);
+    position: relative;
+}
+
+.horizontal-lock-bar {
+    position: absolute;
+    left: 0;
+    width: 100vw;
+    height: 24px;
+    background: linear-gradient(180deg, #222, #555, #222);
+    border-top: 2px solid #111;
+    border-bottom: 2px solid #111;
+    z-index: 21;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+}
+
+.lock-bar-top { top: 25%; }
+.lock-bar-bottom { bottom: 25%; box-shadow: 0 -10px 20px rgba(0,0,0,0.5); }
+
+.noise-texture {
+    position: absolute;
+    inset: 0;
+    background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+    opacity: 0.1;
+    z-index: 1000;
+    pointer-events: none;
+}
