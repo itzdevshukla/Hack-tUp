@@ -34,6 +34,7 @@ function AdminEditEvent() {
 
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertConfig, setAlertConfig] = useState({});
+    const today = new Date().toISOString().split('T')[0];
 
     useEffect(() => {
         const fetchEventDetails = async () => {
@@ -323,7 +324,7 @@ function AdminEditEvent() {
                         <div style={{ display: 'flex', gap: '20px', marginBottom: '15px', flexWrap: 'wrap' }}>
                             <div className="admin-form-group" style={{ flex: 1, minWidth: 'min(100%, 160px)', marginBottom: 0 }}>
                                 <label style={{ color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Start Date *</label>
-                                <input type="date" className="admin-search-input" name="start_date" value={formData.start_date} onChange={handleChange} style={{ padding: '15px', colorScheme: 'dark' }} required />
+                                <input type="date" className="admin-search-input" name="start_date" value={formData.start_date} onChange={handleChange} min={today} style={{ padding: '15px', colorScheme: 'dark' }} required />
                             </div>
                             <div className="admin-form-group" style={{ flex: 1, minWidth: 'min(100%, 160px)', marginBottom: 0 }}>
                                 <label style={{ color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Start Time *</label>
@@ -333,7 +334,7 @@ function AdminEditEvent() {
                         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
                             <div className="admin-form-group" style={{ flex: 1, minWidth: 'min(100%, 160px)', marginBottom: 0 }}>
                                 <label style={{ color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>End Date *</label>
-                                <input type="date" className="admin-search-input" name="end_date" value={formData.end_date} onChange={handleChange} style={{ padding: '15px', colorScheme: 'dark' }} required />
+                                <input type="date" className="admin-search-input" name="end_date" value={formData.end_date} onChange={handleChange} min={formData.start_date || today} style={{ padding: '15px', colorScheme: 'dark' }} required />
                             </div>
                             <div className="admin-form-group" style={{ flex: 1, minWidth: 'min(100%, 160px)', marginBottom: 0 }}>
                                 <label style={{ color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>End Time *</label>
@@ -350,7 +351,7 @@ function AdminEditEvent() {
                         <div style={{ display: 'flex', gap: '20px', marginBottom: '15px', flexWrap: 'wrap' }}>
                             <div className="admin-form-group" style={{ flex: 1, minWidth: 'min(100%, 160px)', marginBottom: 0 }}>
                                 <label style={{ color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Reg Start Date</label>
-                                <input type="date" className="admin-search-input" name="reg_start_date" value={formData.reg_start_date} onChange={handleChange} style={{ padding: '15px', colorScheme: 'dark' }} />
+                                <input type="date" className="admin-search-input" name="reg_start_date" value={formData.reg_start_date} onChange={handleChange} min={today} style={{ padding: '15px', colorScheme: 'dark' }} />
                             </div>
                             <div className="admin-form-group" style={{ flex: 1, minWidth: 'min(100%, 160px)', marginBottom: 0 }}>
                                 <label style={{ color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Reg Start Time</label>
@@ -360,7 +361,7 @@ function AdminEditEvent() {
                         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
                             <div className="admin-form-group" style={{ flex: 1, minWidth: 'min(100%, 160px)', marginBottom: 0 }}>
                                 <label style={{ color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Reg End Date</label>
-                                <input type="date" className="admin-search-input" name="reg_end_date" value={formData.reg_end_date} onChange={handleChange} style={{ padding: '15px', colorScheme: 'dark' }} />
+                                <input type="date" className="admin-search-input" name="reg_end_date" value={formData.reg_end_date} onChange={handleChange} min={formData.reg_start_date || today} style={{ padding: '15px', colorScheme: 'dark' }} />
                             </div>
                             <div className="admin-form-group" style={{ flex: 1, minWidth: 'min(100%, 160px)', marginBottom: 0 }}>
                                 <label style={{ color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Reg End Time</label>

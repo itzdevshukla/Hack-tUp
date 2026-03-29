@@ -13,7 +13,6 @@ import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import HostEvent from './components/HostEvent';
 import Profile from './components/Profile';
-import Leaderboard from './components/Leaderboard';
 import EventLeaderboard from './components/EventLeaderboard';
 
 
@@ -31,6 +30,7 @@ import UserOverview from './components/UserOverview';
 import RegisteredEvents from './components/RegisteredEvents';
 import NotFound from './components/NotFound';
 import TeamSection from './components/TeamSection';
+import ForgotPassword from './components/ForgotPassword';
 import { useParams } from 'react-router-dom';
 
 // Wrapper to parse the event ID and pass username
@@ -88,6 +88,7 @@ function App() {
           <Route path="/our-team" element={<OurTeam />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* User Dashboard layout wraps these routes */}
           <Route path="/dashboard" element={<UserDashboardLayout />}>
@@ -101,11 +102,6 @@ function App() {
           <Route path="/profile" element={
             <UserDashboardLayout>
               <Profile />
-            </UserDashboardLayout>
-          } />
-          <Route path="/leaderboard" element={
-            <UserDashboardLayout>
-              <Leaderboard />
             </UserDashboardLayout>
           } />
 

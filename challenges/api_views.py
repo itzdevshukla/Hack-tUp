@@ -1,5 +1,7 @@
 from ctf.utils import encode_id
 import json
+import logging
+from django_ratelimit.decorators import ratelimit
 from django.db import models
 from django.http import JsonResponse
 from django.db.models import Sum, Count, F, Window
@@ -16,6 +18,7 @@ from administration.models import Event
 from dashboard.models import EventAccess
 from challenges.models import Challenge, UserChallenge, UserHint, ChallengeHint, Announcement, WriteUp
 
+logger = logging.getLogger(__name__)
 
 @login_required
 def event_writeups_api(request, event_id):
@@ -248,9 +251,12 @@ def unlock_hint_api(request, hint_id):
 
     return JsonResponse({'error': 'Failed to unlock hint.'}, status=400)
 
+@ratelimit(key='user_or_ip', rate='10/m', block=False)
 @login_required
 @require_POST
 def submit_flag_api(request, challenge_id):
+    if getattr(request, 'limited', False):
+        return JsonResponse({'success': False, 'error': 'You are going too fast. Try after 1 minute.'}, status=429)
     try:
         data = json.loads(request.body)
         submitted_flag = data.get('flag', '').strip()
@@ -645,8 +651,9 @@ def event_announcements_api(request, event_id):
             
         return JsonResponse({"success": True, "announcements": data})
         
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+    except Exception:
+        logger.exception("Unexpected error in event_announcements_api for event %s", event_id)
+        return JsonResponse({"error": "An internal error occurred."}, status=500)
 
 
 @login_required

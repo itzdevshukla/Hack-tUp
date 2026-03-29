@@ -275,7 +275,11 @@ const Register = () => {
                             </div>
 
 
-                            <button type="submit" className="auth-btn" disabled={loading}>
+                            <button 
+                                type="submit" 
+                                className={`auth-btn ${loading ? 'loading' : ''}`} 
+                                disabled={loading}
+                            >
                                 {loading ? 'Sending...' : 'Send Verification Code'}
                             </button>
                         </motion.form>
@@ -315,7 +319,11 @@ const Register = () => {
                                 </div>
                             </div>
 
-                            <button type="submit" className="auth-btn" disabled={loading}>
+                            <button 
+                                type="submit" 
+                                className={`auth-btn ${loading ? 'loading' : ''}`} 
+                                disabled={loading}
+                            >
                                 {loading ? 'Verifying...' : 'Verify & Access'}
                             </button>
 

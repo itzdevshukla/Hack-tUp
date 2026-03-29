@@ -136,6 +136,9 @@ const UserChallengeDetail = () => {
                     is_solved: true,
                     solves_count: (prev.solves_count || 0) + 1
                 }));
+            } else if (res.status === 429) {
+                // Rate limited: Show message but NO animation/sound
+                setSubmitStatus({ status: 'error', message: data.error || 'You are going too fast. Try after 1 minute.' });
             } else {
                 // Incorrect flag handling: Play sound
                 try {

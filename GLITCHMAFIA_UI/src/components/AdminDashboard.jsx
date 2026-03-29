@@ -34,9 +34,9 @@ function AdminDashboard() {
     useEffect(() => {
         if (!loading) {
             if (!user) {
-                navigate('/login');
+                navigate('/login', { replace: true });
             } else if (!user.has_admin_access) {
-                navigate('/dashboard');
+                navigate('/dashboard', { replace: true });
             } else if (!user.is_staff && !user.is_superuser) {
                 const unauthorizedPaths = [
                     '/administration',
@@ -59,8 +59,12 @@ function AdminDashboard() {
         }
     }, [user, loading, navigate]);
 
-    if (loading || !user || !user.has_admin_access) {
-        return <div className="loading-screen">Loading Admin Panel...</div>;
+    // Block render entirely until auth is confirmed — no flash for unauthorized users
+    if (loading) {
+        return <div className="loading-screen">Authenticating...</div>;
+    }
+    if (!user || !user.has_admin_access) {
+        return null; // useEffect will redirect, return nothing to avoid flash
     }
 
     return (

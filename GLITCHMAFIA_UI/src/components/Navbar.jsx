@@ -105,8 +105,7 @@ const Navbar = () => {
         currentLinks = [
             { name: 'Dashboard', href: '/dashboard', isPage: true },
             { name: 'Explore Events', href: '/dashboard/explore', isPage: true },
-            { name: 'Host Event', href: '/dashboard/host-event', isPage: true },
-            { name: 'Leaderboard', href: '/leaderboard', isPage: true }
+            { name: 'Host Event', href: '/dashboard/host-event', isPage: true }
         ];
     } else {
         currentLinks = [

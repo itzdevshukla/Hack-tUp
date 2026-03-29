@@ -14,11 +14,19 @@ urlpatterns = [
 
     # Auth
     path('auth/login/', auth_api.login_api, name='api_login'),
+    path('auth/send-otp/', auth_api.send_registration_otp_api, name='api_send_otp'),
     path('auth/register/', auth_api.register_api, name='api_register'),
     path('auth/logout/', auth_api.logout_api, name='api_logout'),
     path('auth/status/', auth_api.user_status_api, name='api_status'),
     path('auth/change-password/', auth_api.change_password_api, name='api_change_password'),
     path('auth/delete-account/', auth_api.delete_account_api, name='api_delete_account'),
+    path('auth/check-username/', auth_api.check_username_api, name='api_check_username'),
+    path('auth/check-email/', auth_api.check_email_api, name='api_check_email'),
+    path('auth/forgot-password/send-otp/', auth_api.forgot_password_send_otp_api, name='api_forgot_password_send_otp'),
+    path('auth/forgot-password/reset/', auth_api.forgot_password_reset_api, name='api_forgot_password_reset'),
+    path('auth/totp/setup/', auth_api.totp_setup_api, name='api_totp_setup'),
+    path('auth/totp/enable/', auth_api.totp_enable_api, name='api_totp_enable'),
+    path('auth/totp/verify/', auth_api.totp_verify_api, name='api_totp_verify'),
 
     # Dashboard
     path('dashboard/overview/', dashboard_api.user_dashboard_overview_api, name='api_user_dashboard_overview'),

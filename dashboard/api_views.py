@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import date, timedelta
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
@@ -6,6 +7,8 @@ from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib.auth.decorators import login_required
+
+logger = logging.getLogger(__name__)
 
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncDate

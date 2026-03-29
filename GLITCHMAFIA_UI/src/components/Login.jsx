@@ -4,12 +4,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import BackgroundParticles from './BackgroundParticles';
+import TOTPSetup from './TOTPSetup';
+import TOTPVerify from './TOTPVerify';
 
 const Login = () => {
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [toast, setToast] = useState(null);
-    const { loginUser } = useContext(AuthContext);
+    const { loginUser, totpState, completeTotpLogin, cancelTotpLogin } = useContext(AuthContext);
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
 
     // Auto-dismiss toast after 4 seconds
     useEffect(() => {
@@ -23,11 +26,23 @@ const Login = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsLoggingIn(true);
         e.target.username.value = e.target.username.value.trim();
-        loginUser(e, (msg) => setToast(msg));
+        await loginUser(e, (msg) => {
+            setToast(msg);
+            setIsLoggingIn(false);
+        });
     };
+
+    // Show TOTP screens when admin login requires 2FA
+    if (totpState === 'setup') {
+        return <TOTPSetup onComplete={completeTotpLogin} />;
+    }
+    if (totpState === 'verify') {
+        return <TOTPVerify onComplete={completeTotpLogin} onCancel={cancelTotpLogin} />;
+    }
 
     return (
         <div className="auth-container">
@@ -80,10 +95,20 @@ const Login = () => {
                         </div>
                     </div>
 
-                    <button type="submit" className="auth-btn">
-                        Access System
+                    <button 
+                        type="submit" 
+                        className={`auth-btn ${isLoggingIn ? 'loading' : ''}`}
+                        disabled={isLoggingIn}
+                    >
+                        {isLoggingIn ? 'Accessing...' : 'Access System'}
                     </button>
                 </form>
+
+                <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                    <Link to="/forgot-password" style={{ color: '#9ACD32', fontSize: '0.85rem', opacity: 0.8, textDecoration: 'none', fontFamily: "'Share Tech Mono', monospace" }}>
+                        Forgot Password?
+                    </Link>
+                </div>
 
                 <div className="auth-footer">
                     Don't have an account?

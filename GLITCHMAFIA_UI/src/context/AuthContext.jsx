@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    // Default to a logged-in user for convenience, or null to force login
-    // Default to a logged-in user for convenience
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    // 'none' | 'verify' | 'setup'
+    const [totpState, setTotpState] = useState('none');
     const navigate = useNavigate();
 
     const getCookie = (name) => {
@@ -16,7 +16,6 @@ export const AuthProvider = ({ children }) => {
             const cookies = document.cookie.split(';');
             for (let i = 0; i < cookies.length; i++) {
                 const cookie = cookies[i].trim();
-                // Does this cookie string begin with the name we want?
                 if (cookie.substring(0, name.length + 1) === (name + '=')) {
                     cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
                     break;
@@ -24,7 +23,7 @@ export const AuthProvider = ({ children }) => {
             }
         }
         return cookieValue;
-    }
+    };
 
     const checkStatus = async () => {
         try {
@@ -36,7 +35,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(null);
             }
         } catch (error) {
-            console.error("Auth status check failed", error);
+            console.error('Auth status check failed', error);
             setUser(null);
         }
         setLoading(false);
@@ -50,7 +49,6 @@ export const AuthProvider = ({ children }) => {
         e.preventDefault();
         const username = e.target.username.value;
         const password = e.target.password.value;
-
         const csrftoken = getCookie('csrftoken');
 
         try {
@@ -64,37 +62,64 @@ export const AuthProvider = ({ children }) => {
             });
             const data = await response.json();
 
+            if (response.status === 429) {
+                if (onError) onError(data.error || 'Too many login attempts. Please wait.');
+                return;
+            }
+
             if (data.success) {
-                setUser(data.user);
-                if (data.user.is_staff || data.user.is_superuser) {
-                    navigate('/administration');
-                } else if (data.user.has_admin_access) {
-                    if (data.user.assigned_event_id) {
-                        navigate('/administration/event/' + data.user.assigned_event_id);
-                    } else {
-                        navigate('/administration/events');
-                    }
+                if (data.requires_totp_setup) {
+                    setTotpState('setup');
+                } else if (data.requires_totp) {
+                    setTotpState('verify');
                 } else {
+                    setUser(data.user);
                     navigate('/dashboard');
                 }
             } else {
-                const msg = data.error || 'Login failed';
-                if (onError) onError(msg);
-                else console.error(msg);
+                if (onError) onError(data.error || 'Login failed. Please try again.');
             }
         } catch (error) {
-            console.error("Login flow error", error);
+            console.error('Login flow error', error);
             if (onError) onError('Connection error. Please try again.');
         }
+    };
+
+    // Called after TOTP verify/enable succeeds
+    const completeTotpLogin = (userData) => {
+        setUser(userData);
+        setTotpState('none');
+        if (userData.is_staff || userData.is_superuser) {
+            navigate('/administration');
+        } else if (userData.has_admin_access) {
+            if (userData.assigned_event_id) {
+                navigate('/administration/event/' + userData.assigned_event_id);
+            } else {
+                navigate('/administration/events');
+            }
+        } else {
+            navigate('/dashboard');
+        }
+    };
+
+    // Called when admin cancels TOTP — logs out the partial session
+    const cancelTotpLogin = async () => {
+        const csrftoken = getCookie('csrftoken');
+        try {
+            await fetch('/api/auth/logout/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken }
+            });
+        } catch { /* ignore */ }
+        setTotpState('none');
+        setUser(null);
     };
 
     const logoutUser = async () => {
         const csrftoken = getCookie('csrftoken');
         await fetch('/api/auth/logout/', {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': csrftoken
-            }
+            headers: { 'X-CSRFToken': csrftoken }
         });
         setUser(null);
         navigate('/login');
@@ -103,8 +128,11 @@ export const AuthProvider = ({ children }) => {
     const contextData = {
         user,
         loading,
+        totpState,
         loginUser,
-        logoutUser
+        logoutUser,
+        completeTotpLogin,
+        cancelTotpLogin,
     };
 
     return (

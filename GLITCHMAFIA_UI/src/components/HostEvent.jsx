@@ -36,6 +36,7 @@ const HostEvent = () => {
     // Alert State
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertConfig, setAlertConfig] = useState({});
+    const today = new Date().toISOString().split('T')[0];
 
     const handleNext = (e) => {
         e.preventDefault();
@@ -280,6 +281,7 @@ const HostEvent = () => {
                                             className="form-input"
                                             value={formData.registrationStartDate}
                                             onChange={handleChange}
+                                            min={today}
                                             style={{ colorScheme: 'dark' }}
                                         />
                                     </div>
@@ -291,6 +293,7 @@ const HostEvent = () => {
                                             className="form-input"
                                             value={formData.registrationStartTime}
                                             onChange={handleChange}
+                                            min={today}
                                             style={{ colorScheme: 'dark' }}
                                         />
                                     </div>
@@ -302,6 +305,7 @@ const HostEvent = () => {
                                             className="form-input"
                                             value={formData.registrationEndDate}
                                             onChange={handleChange}
+                                            min={today}
                                             style={{ colorScheme: 'dark' }}
                                         />
                                     </div>
@@ -313,6 +317,7 @@ const HostEvent = () => {
                                             className="form-input"
                                             value={formData.registrationEndTime}
                                             onChange={handleChange}
+                                            min={today}
                                             style={{ colorScheme: 'dark' }}
                                         />
                                     </div>
@@ -334,6 +339,7 @@ const HostEvent = () => {
                                             value={formData.startDate}
                                             onChange={handleChange}
                                             required
+                                            min={today}
                                             style={{ colorScheme: 'dark' }}
                                         />
                                     </div>
@@ -346,6 +352,7 @@ const HostEvent = () => {
                                             value={formData.startTime}
                                             onChange={handleChange}
                                             required
+                                            min={today}
                                             style={{ colorScheme: 'dark' }}
                                         />
                                     </div>
@@ -358,6 +365,7 @@ const HostEvent = () => {
                                             value={formData.endDate}
                                             onChange={handleChange}
                                             required
+                                            min={today}
                                             style={{ colorScheme: 'dark' }}
                                         />
                                     </div>
@@ -370,6 +378,7 @@ const HostEvent = () => {
                                             value={formData.endTime}
                                             onChange={handleChange}
                                             required
+                                            min={today}
                                             style={{ colorScheme: 'dark' }}
                                         />
                                     </div>

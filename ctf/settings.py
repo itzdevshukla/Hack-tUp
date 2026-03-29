@@ -30,6 +30,17 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ["*"]
 
+# Cache backend - using Redis (Windows -> WSL)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1'),
+    }
+}
+
+# django-ratelimit works best with Redis.
+# SILENCED_SYSTEM_CHECKS = ['django_ratelimit.E003', 'django_ratelimit.W001']
+
 # Trust Render's HTTPS URLs for CSRF (Fixes Login 403 Forbidden)
 CSRF_TRUSTED_ORIGINS = [
     'https://hackitup.onrender.com',
@@ -53,7 +64,18 @@ INSTALLED_APPS = [
     'challenges',
     'teams',
     'channels',
+    'django_ratelimit',
 ]
+
+# ================= EMAIL CONFIGURATION =================
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp-relay.brevo.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "a624b5001@smtp-brevo.com"
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = 'noreply@hackitupnow.tech'
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -72,6 +94,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
+            os.path.join(BASE_DIR, 'templates'),
             os.path.join(BASE_DIR, 'GLITCHMAFIA_UI/build'),
         ],
         'APP_DIRS': True,
@@ -88,11 +111,21 @@ TEMPLATES = [
 # WSGI_APPLICATION = 'ctf.wsgi.application'
 ASGI_APPLICATION = 'ctf.asgi.application'
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer'
+if 'REDIS_URL' in os.environ:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [os.environ['REDIS_URL']],
+            },
+        }
     }
-}
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer'
+        }
+    }
 
 
 # Database

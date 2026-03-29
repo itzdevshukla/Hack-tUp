@@ -35,3 +35,4 @@ gunicorn==25.0.2
 python-dotenv>=1.0.1
 channels
 daphne
+channels-redis>=4.0.0

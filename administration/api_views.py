@@ -11,10 +11,14 @@ from administration.models import Event, EventRole
 from challenges.models import Challenge, UserChallenge, ChallengeHint, UserHint, ChallengeAttachment, ChallengeWave, WriteUp
 from dashboard.models import EventAccess
 import json
+import logging
 import openpyxl
 import secrets
 import string
 from django.http import HttpResponse
+
+logger = logging.getLogger(__name__)
+
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
