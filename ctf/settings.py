@@ -219,11 +219,16 @@ AWS_DEFAULT_ACL = None
 AWS_QUERYSTRING_AUTH = True
 
 STORAGES = {
+    # For media files (uploads → S3)
     "default": {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
     },
-}
 
+    # For static files (CSS, JS → collected locally OR via whitenoise)
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 AWS_S3_OBJECT_PARAMETERS = {
     "ContentDisposition": "attachment"
