@@ -77,7 +77,7 @@ def login_api(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-@ratelimit(key='post:email', rate='10/h', block=False)
+@ratelimit(key='post:email', rate='10000/h', block=False)
 @require_POST
 def send_registration_otp_api(request):
     if getattr(request, 'limited', False):
