@@ -225,6 +225,10 @@ STORAGES = {
 }
 
 
+AWS_S3_OBJECT_PARAMETERS = {
+    "ContentDisposition": "attachment"
+}
+
 
 AWS_DEFAULT_ACL = "public-read"
 AWS_QUERYSTRING_AUTH = False
