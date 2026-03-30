@@ -764,11 +764,19 @@ def admin_challenge_detail_api(request, event_id, challenge_id):
             if request.content_type == 'application/json':
                 data = json.loads(request.body)
                 if data.get("action") == "delete_file":
-                    file_id = data.get("file_id")
-                    if file_id:
-                        ChallengeAttachment.objects.filter(id=file_id, challenge=challenge).delete()
-                        return JsonResponse({"message": "File deleted successfully"})
-            
+                    file_id_encoded = data.get("file_id")
+                    if file_id_encoded:
+                        try:
+                            f_id = decode_id(file_id_encoded)
+                            attachment = ChallengeAttachment.objects.get(id=f_id, challenge=challenge)
+                            if attachment.file:
+                                attachment.file.delete(save=False)
+                            attachment.delete()
+                            return JsonResponse({"message": "File deleted successfully"})
+                        except ChallengeAttachment.DoesNotExist:
+                            return JsonResponse({"error": "File not found"}, status=404)
+                        except Exception as e:
+                            return JsonResponse({"error": str(e)}, status=500)
             # For standard updates (which might include files), we expect multipart/form-data.
             # In Django, if a fetch uses POST with FormData, data is in request.POST and files in request.FILES.
             data = request.POST if request.POST else json.loads(request.body)
