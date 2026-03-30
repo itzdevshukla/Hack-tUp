@@ -1,3 +1,4 @@
+0
 """
 Django settings for ctf project.
 
@@ -43,7 +44,8 @@ CACHES = {
 
 # Trust Render's HTTPS URLs for CSRF (Fixes Login 403 Forbidden)
 CSRF_TRUSTED_ORIGINS = [
-    'https://hackitup.onrender.com',
+    "https://hackitupnow.tech",
+    "https://www.hackitupnow.tech",
 ]
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
@@ -131,13 +133,23 @@ else:
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.sqlite3',
+#        'NAME': BASE_DIR / 'db.sqlite3',
+#    }
+#}
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'hackitup_db',
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'),
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -197,9 +209,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ================= COOKIE SECURITY =================
 # Set Secure cookies in production only (Render requires HTTPS)
+
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-
-

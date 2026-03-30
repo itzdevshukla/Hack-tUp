@@ -68,7 +68,7 @@ const AdminEventRequests = () => {
                                     <td>
                                         <div style={{ display: 'flex', gap: '10px' }}>
                                             <Link
-                                                to={`/administration/event/${req.id}/edit`}
+                                                to={`/administration/event-requests/review/${req.id}`}
                                                 className="admin-btn-primary"
                                                 style={{ padding: '8px 12px', fontSize: '0.9rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
                                             >

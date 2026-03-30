@@ -81,6 +81,7 @@ function AdminDashboard() {
                     <Route path="/user/:id" element={<AdminUserDetail />} />
                     <Route path="/event/:id" element={<AdminEventDetail />} />
                     <Route path="/event/:id/edit" element={<AdminEditEvent />} />
+                    <Route path="/event-requests/review/:id" element={<AdminEditEvent />} />
                     <Route path="/event/:id/rules" element={<AdminEventRules />} />
                     <Route path="/event/:id/challenges" element={<AdminEventChallenges />} />
                     <Route path="/event/:id/challenges/new" element={<AdminEventChallengeCreate />} />

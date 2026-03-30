@@ -133,7 +133,11 @@ function AdminEditEvent() {
                 type: 'info',
                 onConfirm: () => {
                     setAlertOpen(false);
-                    navigate(`/administration/event/${id}`);
+                    if (isPending) {
+                        navigate('/administration/event-requests');
+                    } else {
+                        navigate(`/administration/event/${id}`);
+                    }
                 },
                 onCancel: null
             });
@@ -210,9 +214,15 @@ function AdminEditEvent() {
 
             <div className="admin-content-header" style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <p className="admin-content-subtitle" style={{ margin: 0 }}>
-                    <Link to={`/administration/event/${id}`} style={{ color: '#00ff41', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                        <FaArrowLeft /> Back to Details
-                    </Link>
+                    {isPending ? (
+                        <Link to={`/administration/event-requests`} style={{ color: '#00ff41', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            <FaArrowLeft /> Back to Requests
+                        </Link>
+                    ) : (
+                        <Link to={`/administration/event/${id}`} style={{ color: '#00ff41', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            <FaArrowLeft /> Back to Details
+                        </Link>
+                    )}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
                     <h1 style={{ margin: 0, fontSize: 'clamp(1.1rem, 3.5vw, 2rem)' }}>Edit Event</h1>

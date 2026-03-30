@@ -36,3 +36,4 @@ python-dotenv>=1.0.1
 channels
 daphne
 channels-redis>=4.0.0
+django-ratelimit

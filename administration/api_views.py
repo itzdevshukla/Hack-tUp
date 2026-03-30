@@ -197,9 +197,9 @@ def admin_events_api(request):
         return JsonResponse({"error": "Forbidden"}, status=403)
         
     if request.user.is_staff or request.user.is_superuser:
-        events = Event.objects.all().order_by('-created_at')
+        events = Event.objects.filter(is_approved=True).order_by('-created_at')
     else:
-        events = Event.objects.filter(eventrole__user=request.user).order_by('-created_at')
+        events = Event.objects.filter(eventrole__user=request.user, is_approved=True).order_by('-created_at')
     
     total_events = events.count()
     live_events = events.filter(status='live').count()
