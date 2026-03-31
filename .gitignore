@@ -58,3 +58,8 @@ package-lock.json
 *.swo
 .DS_Store
 Thumbs.db
+
+
+
+
+security_audit_report.md

@@ -77,11 +77,11 @@ def login_api(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-@ratelimit(key='post:email', rate='10000/h', block=False)
+@ratelimit(key='ip', rate='5/m', block=False)
 @require_POST
 def send_registration_otp_api(request):
     if getattr(request, 'limited', False):
-        return JsonResponse({'success': False, 'error': 'Too many OTP requests for this email. Please wait 1 hour.'}, status=429)
+        return JsonResponse({'success': False, 'error': 'Too many OTP requests from this IP. Please wait 1 minute.'}, status=429)
     import re
     try:
         data = json.loads(request.body)
@@ -254,6 +254,12 @@ def change_password_api(request):
         if not old_password or not new_password:
             return JsonResponse({'success': False, 'message': 'Missing fields.'}, status=400)
             
+        import re
+        if not (8 <= len(new_password) <= 16):
+            return JsonResponse({'success': False, 'message': 'Password must be between 8 and 16 characters.'}, status=400)
+        if not re.search(r'[a-z]', new_password) or not re.search(r'[A-Z]', new_password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', new_password):
+            return JsonResponse({'success': False, 'message': 'Password must contain uppercase, lowercase, and a special character.'}, status=400)
+            
         if not request.user.check_password(old_password):
             return JsonResponse({'success': False, 'message': 'Incorrect current password.'}, status=400)
             
@@ -316,11 +322,11 @@ def check_email_api(request):
     return JsonResponse({'available': not exists})
 
 
-@ratelimit(key='post:email', rate='3/s', block=False)
+@ratelimit(key='ip', rate='5/m', block=False)
 @require_POST
 def forgot_password_send_otp_api(request):
     if getattr(request, 'limited', False):
-        return JsonResponse({'success': False, 'error': 'Too many requests for this email. Please wait 1 hour.'}, status=429)
+        return JsonResponse({'success': False, 'error': 'Too many requests from this IP. Please wait 1 minute.'}, status=429)
     try:
         data = json.loads(request.body)
         email = data.get('email', '').strip().lower()
@@ -426,6 +432,9 @@ def totp_setup_api(request):
 
     profile, _ = UserProfile.objects.get_or_create(user=user)
 
+    if profile.totp_enabled:
+        return JsonResponse({'success': False, 'error': 'TOTP is already enabled.'}, status=400)
+
     # Reuse secret if not enabled yet to prevent StrictMode race conditions
     if not profile.totp_secret or not profile.totp_enabled:
         if not profile.totp_secret:
@@ -455,12 +464,16 @@ def totp_setup_api(request):
     })
 
 
+@ratelimit(key='ip', rate='5/m', block=False)
 @require_POST
 def totp_enable_api(request):
     """
     Verify the first TOTP code and ENABLE 2FA permanently.
     Only then is the user fully logged in.
     """
+    if getattr(request, 'limited', False):
+        return JsonResponse({'success': False, 'error': 'Too many attempts. Try again in 1 minute.'}, status=429)
+
     user_id = request.session.get('pre_totp_user_id')
     if not user_id:
         return JsonResponse({'success': False, 'error': 'Session expired. Please log in again.'}, status=401)
@@ -525,7 +538,7 @@ def totp_enable_api(request):
 
 
 @require_POST
-@ratelimit(key='post:otp_code', rate='5/m', block=False)
+@ratelimit(key='ip', rate='5/m', block=False)
 def totp_verify_api(request):
     """
     Verify a TOTP code during login.

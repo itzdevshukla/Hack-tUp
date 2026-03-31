@@ -54,28 +54,32 @@ def join_event_api(request, event_id):
         
     event = get_object_or_404(Event, id=event_id)
     
-    if not event.is_registration_open():
-        return JsonResponse({'success': False, 'message': 'Registration Closed'})
+    from django.db import transaction
+    with transaction.atomic():
+        event = Event.objects.select_for_update().get(id=event_id)
+        
+        if not event.is_registration_open():
+            return JsonResponse({'success': False, 'message': 'Registration Closed'})
 
-    # Check max participants
-    current_participants = EventAccess.objects.filter(event=event, is_registered=True).count()
-    if current_participants >= event.max_participants:
-        return JsonResponse({'success': False, 'message': 'Event is full (Capacity Reached)'})
+        # Check max participants
+        current_participants = EventAccess.objects.filter(event=event, is_registered=True).count()
+        if current_participants >= event.max_participants:
+            return JsonResponse({'success': False, 'message': 'Event is full (Capacity Reached)'})
+            
+        if access_code != event.access_code:
+            return JsonResponse({'success': False, 'message': 'Invalid Access Code'})
+            
+        access, created = EventAccess.objects.get_or_create(
+            user=request.user,
+            event=event,
+            defaults={"is_registered": True}
+        )
         
-    if access_code != event.access_code:
-        return JsonResponse({'success': False, 'message': 'Invalid Access Code'})
-        
-    access, created = EventAccess.objects.get_or_create(
-        user=request.user,
-        event=event,
-        defaults={"is_registered": True}
-    )
-    
-    if not created and not access.is_registered:
-        access.is_registered = True
-        access.save()
-        
-    return JsonResponse({'success': True, 'message': 'Registered Successfully'})
+        if not created and not access.is_registered:
+            access.is_registered = True
+            access.save()
+            
+        return JsonResponse({'success': True, 'message': 'Registered Successfully'})
 
 @login_required
 @require_GET

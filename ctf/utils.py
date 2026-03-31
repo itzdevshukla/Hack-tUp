@@ -1,6 +1,6 @@
 from hashids import Hashids
 from django.conf import settings
-import random
+import secrets
 import string
 from django.core.mail import send_mail
 
@@ -31,9 +31,9 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
 def generate_otp(length=6):
-    """Generate a random alphanumeric OTP."""
+    """Generate a random alphanumeric OTP using a CSRNG."""
     characters = string.ascii_uppercase + string.digits
-    return ''.join(random.choices(characters, k=length))
+    return ''.join(secrets.choice(characters) for _ in range(length))
 
 def send_otp_email(email, otp):
     """Send OTP to the user's email using a premium HTML template."""

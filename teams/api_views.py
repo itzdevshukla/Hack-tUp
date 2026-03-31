@@ -267,45 +267,47 @@ def cancel_join_request_api(request, request_id):
 @login_required
 @require_POST
 def handle_join_request_api(request, team_id, request_id):
-    team = get_object_or_404(Team, id=team_id)
+    from django.db import transaction
+    with transaction.atomic():
+        team = get_object_or_404(Team.objects.select_for_update(), id=team_id)
 
-    if team.captain_id != request.user.id:
-        return JsonResponse({"error": "Only the team captain can manage join requests."}, status=403)
+        if team.captain_id != request.user.id:
+            return JsonResponse({"error": "Only the team captain can manage join requests."}, status=403)
 
-    join_request = get_object_or_404(TeamJoinRequest, id=request_id, team=team)
+        join_request = get_object_or_404(TeamJoinRequest, id=request_id, team=team)
 
-    if join_request.status != 'pending':
-        return JsonResponse({"error": "This request is no longer pending."}, status=400)
+        if join_request.status != 'pending':
+            return JsonResponse({"error": "This request is no longer pending."}, status=400)
 
-    try:
-        body = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON body."}, status=400)
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON body."}, status=400)
 
-    action = (body.get("action") or "").strip()
-    if action not in ("approve", "reject"):
-        return JsonResponse({"error": "action must be 'approve' or 'reject'."}, status=400)
+        action = (body.get("action") or "").strip()
+        if action not in ("approve", "reject"):
+            return JsonResponse({"error": "action must be 'approve' or 'reject'."}, status=400)
 
-    if action == "approve":
-        # Check capacity
-        event = team.event
-        if team.members.count() >= event.max_team_size:
-            return JsonResponse({"error": f"Team is full ({event.max_team_size} members max)."}, status=400)
-        # Check not already a member
-        if TeamMember.objects.filter(team=team, user=join_request.user).exists():
+        if action == "approve":
+            # Check capacity
+            event = team.event
+            if team.members.count() >= event.max_team_size:
+                return JsonResponse({"error": f"Team is full ({event.max_team_size} members max)."}, status=400)
+            # Check not already a member
+            if TeamMember.objects.filter(team=team, user=join_request.user).exists():
+                join_request.status = 'approved'
+                join_request.save(update_fields=['status', 'updated_at'])
+                return JsonResponse({"success": True, "action": "approve", "message": "Already a member."})
+
+            TeamMember.objects.create(team=team, user=join_request.user)
             join_request.status = 'approved'
             join_request.save(update_fields=['status', 'updated_at'])
-            return JsonResponse({"success": True, "action": "approve", "message": "Already a member."})
+            return JsonResponse({"success": True, "action": "approve", "username": join_request.user.username})
 
-        TeamMember.objects.create(team=team, user=join_request.user)
-        join_request.status = 'approved'
-        join_request.save(update_fields=['status', 'updated_at'])
-        return JsonResponse({"success": True, "action": "approve", "username": join_request.user.username})
-
-    else:  # reject
-        join_request.status = 'rejected'
-        join_request.save(update_fields=['status', 'updated_at'])
-        return JsonResponse({"success": True, "action": "reject", "username": join_request.user.username})
+        else:  # reject
+            join_request.status = 'rejected'
+            join_request.save(update_fields=['status', 'updated_at'])
+            return JsonResponse({"success": True, "action": "reject", "username": join_request.user.username})
 
 
 # ─────────────────────────────────────────────────────────────────────

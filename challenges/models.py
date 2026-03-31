@@ -172,6 +172,15 @@ class UserHint(models.Model):
         return f"{self.user.username} unlocked {self.hint}"
 
 
+import uuid
+import os
+
+def challenge_attachment_upload_path(instance, filename):
+    ext = filename.split('.')[-1] if '.' in filename else ''
+    new_name = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
+    return os.path.join("challenge_attachments/", new_name)
+
+
 class ChallengeAttachment(models.Model):
     challenge = models.ForeignKey(
         Challenge,
@@ -180,7 +189,7 @@ class ChallengeAttachment(models.Model):
     )
 
     file = models.FileField(
-        upload_to="challenge_attachments/"
+        upload_to=challenge_attachment_upload_path
     )
 
     uploaded_at = models.DateTimeField(auto_now_add=True)

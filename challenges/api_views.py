@@ -15,6 +15,7 @@ from django.utils import timezone
 from datetime import datetime
 
 from administration.models import Event
+from administration.api_views import is_admin
 from dashboard.models import EventAccess
 from challenges.models import Challenge, UserChallenge, UserHint, ChallengeHint, Announcement, WriteUp
 
@@ -138,11 +139,23 @@ def event_challenges_api(request, event_id):
         is_personally_solved = challenge.id in personally_solved_ids
         
         # Get first blood (still slightly N+1 but better than before, can be further optimized if needed)
+        first_blood_rcd = None
+        fb_data = None
         if is_team_mode:
             from teams.models import TeamChallenge
-            first_blood_rcd = TeamChallenge.objects.filter(challenge=challenge).order_by('solved_at').first()
+            first_blood_rcd = TeamChallenge.objects.filter(challenge=challenge).order_by('solved_at').select_related('team').first()
+            if first_blood_rcd:
+                fb_data = {
+                    'username': first_blood_rcd.team.name,
+                    'time': first_blood_rcd.solved_at
+                }
         else:
-            first_blood_rcd = UserChallenge.objects.filter(challenge=challenge, is_correct=True).order_by('submitted_at').first()
+            first_blood_rcd = UserChallenge.objects.filter(challenge=challenge, is_correct=True).order_by('submitted_at').select_related('user').first()
+            if first_blood_rcd:
+                fb_data = {
+                    'username': first_blood_rcd.user.username,
+                    'time': first_blood_rcd.submitted_at
+                }
             
         challenges_data.append({
             'id': encode_id(challenge.id),
@@ -155,7 +168,7 @@ def event_challenges_api(request, event_id):
             'is_solved': challenge.id in solved_ids,
             'is_personally_solved': is_personally_solved,
             'solves_count': solves_count,
-            'first_blood': first_blood_rcd,
+            'first_blood': fb_data,
             'url': challenge.url if hasattr(challenge, 'url') else None,
             'flag_format': challenge.flag_format if hasattr(challenge, 'flag_format') else 'Hack!tUp{...}',
             'files': [{'name': f.file.name.split('/')[-1], 'url': f.file.url} for f in challenge.attachments.all()],
@@ -166,9 +179,10 @@ def event_challenges_api(request, event_id):
         for hint in challenge.hints.all():
             if is_team_mode and user_team:
                 from teams.models import TeamHint
-                is_unlocked = hint.cost == 0 or TeamHint.objects.filter(team=user_team, hint=hint).exists()
+                # Hints are now only unlocked if explicitly purchased
+                is_unlocked = TeamHint.objects.filter(team=user_team, hint=hint).exists()
             else:
-                is_unlocked = hint.cost == 0 or UserHint.objects.filter(user=request.user, hint=hint).exists()
+                is_unlocked = UserHint.objects.filter(user=request.user, hint=hint).exists()
                 
             challenges_data[-1]['hints'].append({
                 'id': encode_id(hint.id),
@@ -176,20 +190,7 @@ def event_challenges_api(request, event_id):
                 'content': hint.content if is_unlocked else None,
                 'is_unlocked': is_unlocked
             })
-        
-        # Serialize first_blood
-        if challenges_data[-1]['first_blood']:
-            if is_team_mode:
-                challenges_data[-1]['first_blood'] = {
-                    'username': challenges_data[-1]['first_blood'].team.name,
-                    'time': challenges_data[-1]['first_blood'].solved_at
-                }
-            else:
-                challenges_data[-1]['first_blood'] = {
-                    'username': challenges_data[-1]['first_blood'].user.username,
-                    'time': challenges_data[-1]['first_blood'].submitted_at
-                }
-        
+
     return JsonResponse({
         'event': event.event_name, 
         'status': event.get_current_status(),
@@ -199,55 +200,67 @@ def event_challenges_api(request, event_id):
         'needs_team': False,
         'challenges': challenges_data if not is_banned else []
     })
+
 @login_required
 @require_POST
 def unlock_hint_api(request, hint_id):
     hint = get_object_or_404(ChallengeHint, id=hint_id)
     challenge = hint.challenge
     event = challenge.event
+    current_status = event.get_current_status()
 
     access = EventAccess.objects.filter(user=request.user, event=event).first()
-    is_admin_or_creator = request.user.is_superuser or request.user.is_staff or getattr(request.user, 'role', '') in ['admin', 'organizer'] or event.created_by == request.user
+    # Priveleged users: verified admins (needs TOTP verified session)
+    is_privileged_admin = is_admin(request, event_id=event.id)
+    
+    # 🎯 ARENA RULE: No one (not even superusers) gets free hints in a LIVE Arena.
+    # Cost bypass only works in "Test Challenges" (Upcoming/Paused/Pending).
+    can_bypass_cost = is_privileged_admin and current_status != 'live'
 
-    if not is_admin_or_creator:
+    if not is_privileged_admin:
         if not access or not access.is_registered or access.is_banned:
             return JsonResponse({'error': 'Access denied'}, status=403)
             
-        current_status = event.get_current_status()
         if current_status != 'live':
             return JsonResponse({'error': f'Event is currently {current_status}. Hint unlocks are closed.'}, status=403)
 
     if event.is_team_mode:
-        from teams.models import TeamMember, TeamHint
+        from teams.models import TeamMember, TeamHint, Team
         membership = TeamMember.objects.filter(user=request.user, team__event=event).first()
-        if not membership and not is_admin_or_creator:
+        if not membership and not is_privileged_admin:
             return JsonResponse({'error': 'You are not in a team.'}, status=403)
             
         if membership:
-            team = membership.team
-            if TeamHint.objects.filter(team=team, hint=hint).exists():
+            from django.db import transaction
+            with transaction.atomic():
+                team = Team.objects.select_for_update().get(id=membership.team.id)
+                if TeamHint.objects.filter(team=team, hint=hint).exists():
+                    return JsonResponse({'success': True, 'hint_content': hint.content})
+                    
+                current_points = team.total_points
+                if not can_bypass_cost and current_points < hint.cost:
+                    return JsonResponse({'error': f'Not enough team points. Required: {hint.cost}, Available: {current_points}'}, status=400)
+                    
+                TeamHint.objects.create(team=team, hint=hint, unlocked_by=request.user)
                 return JsonResponse({'success': True, 'hint_content': hint.content})
-                
-            current_points = team.total_points
-            if not is_admin_or_creator and current_points < hint.cost:
-                return JsonResponse({'error': f'Not enough team points. Required: {hint.cost}, Available: {current_points}'}, status=400)
-                
-            TeamHint.objects.create(team=team, hint=hint, unlocked_by=request.user)
-            return JsonResponse({'success': True, 'hint_content': hint.content})
     else:
-        if UserHint.objects.filter(user=request.user, hint=hint).exists():
-             return JsonResponse({'success': True, 'hint_content': hint.content})
-             
-        from django.db import models
-        user_solves = UserChallenge.objects.filter(user=request.user, challenge__event=event, is_correct=True).aggregate(total=models.Sum('challenge__points'))['total'] or 0
-        user_hints = UserHint.objects.filter(user=request.user, hint__challenge__event=event).aggregate(total=models.Sum('hint__cost'))['total'] or 0
-        current_points = max(0, user_solves - user_hints)
-        
-        if not is_admin_or_creator and current_points < hint.cost:
-            return JsonResponse({'error': f'Not enough points. Required: {hint.cost}, Available: {current_points}'}, status=400)
+        from django.db import transaction
+        with transaction.atomic():
+            from django.contrib.auth import get_user_model
+            user = get_user_model().objects.select_for_update().get(id=request.user.id)
+            if UserHint.objects.filter(user=user, hint=hint).exists():
+                 return JsonResponse({'success': True, 'hint_content': hint.content})
+                 
+            from django.db import models
+            user_solves = UserChallenge.objects.filter(user=user, challenge__event=event, is_correct=True).aggregate(total=models.Sum('challenge__points'))['total'] or 0
+            user_hints = UserHint.objects.filter(user=user, hint__challenge__event=event).aggregate(total=models.Sum('hint__cost'))['total'] or 0
+            current_points = user_solves - user_hints
             
-        UserHint.objects.create(user=request.user, hint=hint)
-        return JsonResponse({'success': True, 'hint_content': hint.content})
+            if not can_bypass_cost and current_points < hint.cost:
+                return JsonResponse({'error': f'Not enough points. Required: {hint.cost}, Available: {max(0, current_points)}'}, status=400)
+                
+            UserHint.objects.create(user=user, hint=hint)
+            return JsonResponse({'success': True, 'hint_content': hint.content})
 
     return JsonResponse({'error': 'Failed to unlock hint.'}, status=400)
 
@@ -265,11 +278,11 @@ def submit_flag_api(request, challenge_id):
         
     challenge = get_object_or_404(Challenge, id=challenge_id)
     event = challenge.event
-    
     access = EventAccess.objects.filter(user=request.user, event=event).first()
-    is_admin_or_creator = request.user.is_superuser or request.user.is_staff or getattr(request.user, 'role', '') in ['admin', 'organizer'] or event.created_by == request.user
+    
+    is_privileged_admin = is_admin(request, event_id=event.id)
 
-    if not is_admin_or_creator:
+    if not is_privileged_admin:
         if not access or not access.is_registered or access.is_banned:
             return JsonResponse({'error': 'Access denied'}, status=403)
     elif access and access.is_banned:
@@ -278,6 +291,9 @@ def submit_flag_api(request, challenge_id):
     current_status = event.get_current_status()
     if current_status != 'live':
         return JsonResponse({'error': f'Event is currently {current_status}. Submissions are closed.'}, status=403)
+
+    if challenge.wave and not challenge.wave.is_active:
+        return JsonResponse({'error': 'Challenge locked. It belongs to an inactive wave.'}, status=403)
 
     # ── Team mode: check if challenge already solved by team ──────────
     if event.is_team_mode:
@@ -668,6 +684,9 @@ def challenge_solvers_api(request, challenge_id):
     access = EventAccess.objects.filter(user=request.user, event=event).first()
     if not access or not access.is_registered or access.is_banned:
         return JsonResponse({'error': 'Access denied'}, status=403)
+        
+    if challenge.wave and not challenge.wave.is_active:
+        return JsonResponse({'error': 'Access denied: Challenge wave is not active.'}, status=403)
         
     solvers_data = []
     
