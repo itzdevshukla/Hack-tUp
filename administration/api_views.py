@@ -1644,18 +1644,66 @@ def admin_toggle_ban_participant_api(request, event_id, user_id):
             # Toggle the ban status
             access.is_banned = not access.is_banned
             access.save()
+            
+            return JsonResponse({"success": True, "is_banned": access.is_banned})
 
-            # The user's score will dynamically drop from the leaderboard because the leaderboard
-            # query now strictly filters out users where `is_banned=True`.
-
-            return JsonResponse({
-                "message": f"User {'banned' if access.is_banned else 'unbanned'} successfully",
-                "is_banned": access.is_banned
-            })
         except (Event.DoesNotExist, User.DoesNotExist, EventAccess.DoesNotExist):
-            return JsonResponse({"error": "Event, User, or Access record not found"}, status=404)
+            return JsonResponse({"error": "Resource not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Method not allowed"}, status=405)
+
+
+@login_required
+def admin_remove_participant_api(request, event_id, user_id):
+    if not is_admin(request, event_id=event_id):
+        return JsonResponse({"error": "Forbidden"}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        event = Event.objects.get(id=event_id)
+        user = User.objects.get(id=user_id)
+        
+        # 1. Handle Team Logic if applicable
+        if event.is_team_mode:
+            from teams.models import TeamMember, Team
+            try:
+                # Find team membership for this event
+                membership = TeamMember.objects.filter(user=user, team__event=event).first()
+                if membership:
+                    team = membership.team
+                    # If this user is the captain, we must promote or delete
+                    if team.captain == user:
+                        # Find other members
+                        other_members = team.members.exclude(user=user).order_by('joined_at')
+                        if other_members.exists():
+                            # Promote the oldest member
+                            new_captain = other_members.first().user
+                            team.captain = new_captain
+                            team.save()
+                        else:
+                            # Only member was the captain, delete the team
+                            team.delete()
+                    
+                    # Delete member record (if team wasn't deleted)
+                    if Team.objects.filter(id=team.id).exists():
+                        membership.delete()
+            except Exception as e:
+                print(f"Error handling team removal: {e}")
+
+        # 2. Delete Enrollment
+        EventAccess.objects.filter(event=event, user=user).delete()
+        
+        return JsonResponse({"success": True, "message": "Participant removed successfully."})
+
+    except (Event.DoesNotExist, User.DoesNotExist):
+        return JsonResponse({"error": "Event or User not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
 
 
 @login_required

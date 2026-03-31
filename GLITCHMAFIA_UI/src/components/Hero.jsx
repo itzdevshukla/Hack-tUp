@@ -103,7 +103,7 @@ const Hero = () => {
 
                         <div className="hero-actions">
                             <motion.a
-                                href="#"
+                                href="/login"
                                 className="btn-primary"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}

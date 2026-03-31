@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { FaUsers, FaArrowLeft, FaBan, FaUnlock, FaExclamationTriangle } from 'react-icons/fa';
+import { FaUsers, FaArrowLeft, FaBan, FaUnlock, FaExclamationTriangle, FaUserMinus } from 'react-icons/fa';
 import { getCsrfToken } from '../utils/csrf';
 
 /* ── Custom Ban/Unban Confirmation Modal ──────────────────────── */
@@ -61,6 +61,59 @@ function BanConfirmModal({ user, isBanned, onConfirm, onCancel, loading }) {
     );
 }
 
+/* ── Custom Remove Confirmation Modal ────────────────────────── */
+function RemoveConfirmModal({ user, onConfirm, onCancel, loading }) {
+    if (!user) return null;
+    return (
+        <div style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={onCancel}>
+            <div style={{
+                background: '#0f1117', border: '1.5px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: '16px', padding: '32px', maxWidth: '420px', width: '90%',
+                boxShadow: '0 25px 70px rgba(0,0,0,0.8)',
+                display: 'flex', flexDirection: 'column', gap: '20px',
+            }} onClick={e => e.stopPropagation()}>
+                
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <div style={{
+                        width: '64px', height: '64px', borderRadius: '50%',
+                        background: 'rgba(239, 68, 68, 0.1)', border: '2px solid rgba(239, 68, 68, 0.3)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '1.8rem', color: '#ef4444',
+                    }}>
+                        <FaUserMinus />
+                    </div>
+                </div>
+
+                <div style={{ textAlign: 'center' }}>
+                    <h3 style={{ color: '#fff', fontFamily: 'Orbitron', fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>
+                        Permanently Remove Participant
+                    </h3>
+                    <p style={{ color: '#9ca3af', fontSize: '.85rem', marginTop: '10px', lineHeight: 1.6 }}>
+                        You are about to <span style={{ color: '#ef4444', fontWeight: 700 }}>REMOVE</span> <span style={{ color: '#fff', fontWeight: 700 }}>@{user.username}</span> from this event.
+                        <br /><br />
+                        This will <span style={{ color: '#ef4444' }}>DELETE</span> their enrollment and remove them from any teams. This action cannot be undone.
+                    </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={onCancel} disabled={loading}
+                        style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#9ca3af', cursor: 'pointer', fontFamily: 'Orbitron', fontSize: '.75rem', fontWeight: 600 }}>
+                        Cancel
+                    </button>
+                    <button onClick={onConfirm} disabled={loading}
+                        style={{ flex: 1.5, padding: '12px', background: '#ef4444', border: 'none', borderRadius: '10px', color: '#fff', cursor: 'pointer', fontFamily: 'Orbitron', fontSize: '.75rem', fontWeight: 800, boxShadow: '0 0 20px rgba(239, 68, 68, 0.4)' }}>
+                        {loading ? 'REMOVING...' : 'YES, REMOVE'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /* ══════════════════════════════════════════════════════════════ */
 function AdminEventParticipants() {
     const { id } = useParams();
@@ -71,6 +124,7 @@ function AdminEventParticipants() {
 
     // Custom modal state
     const [banModal, setBanModal] = useState(null); // { user, isBanned }
+    const [removeModal, setRemoveModal] = useState(null); // { user }
 
     useEffect(() => {
         const fetchParticipants = async () => {
@@ -122,6 +176,33 @@ function AdminEventParticipants() {
         }
     };
 
+    const confirmRemove = async () => {
+        if (!removeModal) return;
+        const { user } = removeModal;
+        setActionLoading(true);
+        try {
+            const response = await fetch(`/api/admin/event/${id}/participant/${user.id}/remove/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
+            });
+            if (!response.ok) throw new Error('Failed to remove participant');
+            
+            // Remove from local list
+            setData(prev => ({
+                ...prev,
+                participants: prev.participants.filter(p => p.id !== user.id),
+                total_participants: prev.total_participants - 1
+            }));
+            setRemoveModal(null);
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     if (loading) return <div className="loading-text">Loading Participants...</div>;
     if (error) return <div className="error-text">Error: {error}</div>;
 
@@ -133,6 +214,13 @@ function AdminEventParticipants() {
                 isBanned={banModal?.isBanned}
                 onConfirm={confirmBan}
                 onCancel={closeBanModal}
+                loading={actionLoading}
+            />
+
+            <RemoveConfirmModal
+                user={removeModal?.user}
+                onConfirm={confirmRemove}
+                onCancel={() => setRemoveModal(null)}
                 loading={actionLoading}
             />
 
@@ -199,6 +287,14 @@ function AdminEventParticipants() {
                                             disabled={actionLoading}
                                         >
                                             {p.is_banned ? <><FaUnlock /> Unban</> : <><FaBan /> Ban</>}
+                                        </button>
+                                        <button 
+                                            className="admin-btn-ban" 
+                                            style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444' }}
+                                            onClick={() => setRemoveModal({ user: p })}
+                                            disabled={actionLoading}
+                                        >
+                                            <FaUserMinus /> Remove
                                         </button>
                                     </div>
                                 </td>

@@ -1,4 +1,4 @@
-import { FaTwitter, FaDiscord, FaGithub, FaBolt } from 'react-icons/fa';
+import { FaInstagram, FaDiscord, FaEnvelope, FaBolt } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 const Footer = () => {
@@ -14,7 +14,7 @@ const Footer = () => {
                     >
                         <h2>Ready to Transform?</h2>
                         <p>Join the elite hackers and start your journey today.</p>
-                        <a href="#" className="btn-primary">
+                        <a href="/register" className="btn-primary">
                             <FaBolt /> Join Hack!t
                         </a>
                     </motion.div>
@@ -27,9 +27,9 @@ const Footer = () => {
                         </div>
                         <p>Elite CTF Platform for the next generation of cybersecurity experts.</p>
                         <div className="social-links">
-                            <a href="#"><FaTwitter /></a>
-                            <a href="#"><FaDiscord /></a>
-                            <a href="#"><FaGithub /></a>
+                            <a href="https://www.instagram.com/hackitup_india/" target="_blank" rel="noopener noreferrer"><FaInstagram /></a>
+                            <a href="https://discord.gg/rR5BQDaPC" target="_blank" rel="noopener noreferrer"><FaDiscord /></a>
+                            <a href="mailto:info@hackitupnow.tech"><FaEnvelope /></a>
                         </div>
                     </div>
 
