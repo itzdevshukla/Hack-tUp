@@ -63,6 +63,7 @@ urlpatterns = [
     path('admin/event/<hashid:event_id>/rules/', admin_api.admin_update_event_rules_api, name='api_admin_update_event_rules'),
     path('admin/event/<hashid:event_id>/control/', admin_api.admin_event_control_api, name='api_admin_event_control'),
     path('admin/event/<hashid:event_id>/participants/', admin_api.admin_event_participants_api, name='api_admin_event_participants'),
+    path('admin/event/<hashid:event_id>/teams/', admin_api.admin_event_teams_api, name='api_admin_event_teams'),
     path('admin/event/<hashid:event_id>/participant/<hashid:user_id>/ban/', admin_api.admin_toggle_ban_participant_api, name='api_admin_toggle_ban_participant'),
     path('admin/event/<hashid:event_id>/participant/<hashid:user_id>/remove/', admin_api.admin_remove_participant_api, name='api_admin_remove_participant'),
     path('admin/event/<hashid:event_id>/team/<hashid:team_id>/ban/', admin_api.admin_toggle_ban_team_api, name='api_admin_toggle_ban_team'),
