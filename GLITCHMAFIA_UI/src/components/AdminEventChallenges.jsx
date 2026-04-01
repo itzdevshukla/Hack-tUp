@@ -5,13 +5,23 @@ import { FaPlusCircle, FaEdit, FaTrash, FaPuzzlePiece, FaShieldAlt, FaFire } fro
 import { getCsrfToken } from '../utils/csrf';
 
 const CATEGORY_COLORS = {
-    'Web': { bg: 'rgba(0,122,255,0.15)', border: '#007aff', color: '#007aff' },
-    'Crypto': { bg: 'rgba(48,209,88,0.12)', border: '#30d158', color: '#30d158' },
+    'Web Exploitation': { bg: 'rgba(0,122,255,0.15)', border: '#007aff', color: '#007aff' },
+    'Cryptography': { bg: 'rgba(48,209,88,0.12)', border: '#30d158', color: '#30d158' },
     'Reverse Engineering': { bg: 'rgba(255,159,10,0.12)', border: '#ff9f0a', color: '#ff9f0a' },
+    'Binary Exploitation (Pwn)': { bg: 'rgba(255,69,58,0.12)', border: '#ff453a', color: '#ff453a' },
     'Forensics': { bg: 'rgba(100,210,255,0.12)', border: '#64d2ff', color: '#64d2ff' },
-    'Pwn': { bg: 'rgba(255,69,58,0.12)', border: '#ff453a', color: '#ff453a' },
-    'Misc': { bg: 'rgba(191,90,242,0.12)', border: '#bf5af2', color: '#bf5af2' },
     'OSINT': { bg: 'rgba(255,214,10,0.12)', border: '#ffd60a', color: '#ffd60a' },
+    'Miscellaneous': { bg: 'rgba(191,90,242,0.12)', border: '#bf5af2', color: '#bf5af2' },
+    'Networking': { bg: 'rgba(10,132,255,0.12)', border: '#0a84ff', color: '#0a84ff' },
+    'Boot2Root (B2R)': { bg: 'rgba(48,209,88,0.15)', border: '#30d158', color: '#30d158' },
+    'Steganography': { bg: 'rgba(255,214,10,0.15)', border: '#ffd60a', color: '#ffd60a' },
+    'Mobile Security': { bg: 'rgba(255,55,100,0.12)', border: '#ff3764', color: '#ff3764' },
+    'Hardware': { bg: 'rgba(92,255,255,0.12)', border: '#5cffff', color: '#5cffff' },
+    'Cloud Security': { bg: 'rgba(100,210,255,0.15)', border: '#64d2ff', color: '#64d2ff' },
+    'Programming': { bg: 'rgba(255,159,10,0.15)', border: '#ff9f0a', color: '#ff9f0a' },
+    'Blockchain': { bg: 'rgba(191,90,242,0.15)', border: '#bf5af2', color: '#bf5af2' },
+    'Malware Analysis': { bg: 'rgba(255,69,58,0.15)', border: '#ff453a', color: '#ff453a' },
+    'AI': { bg: 'rgba(48,209,88,0.2)', border: '#30d158', color: '#30d158' },
 };
 
 const getCategoryStyle = (cat) => CATEGORY_COLORS[cat] || { bg: 'rgba(255,255,255,0.05)', border: '#444', color: '#aaa' };
@@ -20,15 +30,20 @@ function AdminEventChallenges() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [challenges, setChallenges] = useState([]);
+    const [waves, setWaves] = useState([]);
     const [eventName, setEventName] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    const [categoryFilter, setCategoryFilter] = useState('All');
+    const [waveFilter, setWaveFilter] = useState('All');
 
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertConfig, setAlertConfig] = useState({});
 
     useEffect(() => {
         fetchEventChallenges();
+        fetchEventWaves();
     }, [id]);
 
     const fetchEventChallenges = async () => {
@@ -47,6 +62,18 @@ function AdminEventChallenges() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const fetchEventWaves = async () => {
+        try {
+            const response = await fetch(`/api/admin/event/${id}/waves/`, {
+                headers: { 'X-CSRFToken': getCsrfToken() }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setWaves(data.waves || []);
+            }
+        } catch (err) { console.error("Waves fetch error:", err); }
     };
 
     const confirmDelete = (challengeId, title) => {
@@ -77,8 +104,16 @@ function AdminEventChallenges() {
         }
     };
 
+    const filteredChallenges = challenges.filter(c => {
+        const matchesCategory = categoryFilter === 'All' || c.category === categoryFilter;
+        const matchesWave = waveFilter === 'All' || String(c.wave_id) === waveFilter;
+        return matchesCategory && matchesWave;
+    });
+
     if (loading) return <div className="loading-text">Loading Challenges...</div>;
     if (error) return <div className="error-text">Error: {error}</div>;
+
+    const uniqueCategories = ['All', ...new Set(challenges.map(c => c.category))];
 
     return (
         <div style={{ padding: 'clamp(16px, 3vw, 30px)', minHeight: '100vh', fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
@@ -95,7 +130,7 @@ function AdminEventChallenges() {
                     ← Back to Event Details
                 </Link>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '25px' }}>
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '5px' }}>
                             <FaPuzzlePiece color="#00ff41" size="1.3em" />
@@ -103,7 +138,7 @@ function AdminEventChallenges() {
                                 Challenges
                             </h1>
                             <span style={{ background: 'rgba(0,255,65,0.1)', border: '1px solid rgba(0,255,65,0.3)', color: '#00ff41', padding: '2px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                                {challenges.length}
+                                {filteredChallenges.length} / {challenges.length}
                             </span>
                         </div>
                         <p style={{ margin: 0, color: '#555', fontSize: '0.9rem', fontFamily: 'monospace' }}>
@@ -111,20 +146,50 @@ function AdminEventChallenges() {
                         </p>
                     </div>
 
-                    <Link
-                        to={`/administration/event/${id}/challenges/new`}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#00ff41', color: '#000', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem', transition: 'all 0.2s' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#00cc33'; e.currentTarget.style.boxShadow = '0 0 15px rgba(0,255,65,0.3)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = '#00ff41'; e.currentTarget.style.boxShadow = 'none'; }}
-                    >
-                        <FaPlusCircle /> New Challenge
-                    </Link>
+                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {/* Wave Filter */}
+                        <div style={{ position: 'relative' }}>
+                            <select 
+                                value={waveFilter} 
+                                onChange={(e) => setWaveFilter(e.target.value)} 
+                                style={{ background: '#0a0a0a', border: '1px solid #222', color: '#fff', padding: '10px 15px', borderRadius: '6px', fontSize: '0.85rem', outline: 'none', cursor: 'pointer', minWidth: '160px' }}
+                            >
+                                <option value="All">All Waves</option>
+                                <option value="null">No Wave (Always On)</option>
+                                {waves.map(w => (
+                                    <option key={w.id} value={String(w.id)}>{w.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Category Filter */}
+                        <div style={{ position: 'relative' }}>
+                            <select 
+                                value={categoryFilter} 
+                                onChange={(e) => setCategoryFilter(e.target.value)} 
+                                style={{ background: '#0a0a0a', border: '1px solid #222', color: '#fff', padding: '10px 15px', borderRadius: '6px', fontSize: '0.85rem', outline: 'none', cursor: 'pointer', minWidth: '160px' }}
+                            >
+                                {uniqueCategories.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <Link
+                            to={`/administration/event/${id}/challenges/new`}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#00ff41', color: '#000', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem', transition: 'all 0.2s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#00cc33'; e.currentTarget.style.boxShadow = '0 0 15px rgba(0,255,65,0.3)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#00ff41'; e.currentTarget.style.boxShadow = 'none'; }}
+                        >
+                            <FaPlusCircle /> New Challenge
+                        </Link>
+                    </div>
                 </div>
             </div>
 
             {/* Cards Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: '20px' }}>
-                {challenges.map(c => {
+                {filteredChallenges.map(c => {
                     const catStyle = getCategoryStyle(c.category);
                     return (
                         <div

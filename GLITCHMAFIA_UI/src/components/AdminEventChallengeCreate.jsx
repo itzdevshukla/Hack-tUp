@@ -3,7 +3,12 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { FaPlusCircle, FaTimes, FaSave, FaPuzzlePiece } from 'react-icons/fa';
 import { getCsrfToken } from '../utils/csrf';
 
-const CATEGORIES = ['Web', 'Crypto', 'Reverse Engineering', 'Forensics', 'Pwn', 'Misc', 'OSINT'];
+const CATEGORIES = [
+    'Web Exploitation', 'Cryptography', 'Reverse Engineering', 'Binary Exploitation (Pwn)', 
+    'Forensics', 'OSINT', 'Miscellaneous', 'Networking', 'Boot2Root (B2R)', 
+    'Steganography', 'Mobile Security', 'Hardware', 'Cloud Security', 
+    'Programming', 'Blockchain', 'Malware Analysis', 'AI'
+];
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
 
 const DIFF_COLORS = {

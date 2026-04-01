@@ -448,13 +448,23 @@ function AdminEventChallengeDetail() {
                                 required
                             >
                                 <option value="" disabled style={{ color: '#888' }}>Select Category</option>
-                                <option value="Web" style={{ background: '#111', color: '#fff' }}>Web</option>
-                                <option value="Crypto" style={{ background: '#111', color: '#fff' }}>Crypto</option>
+                                <option value="Web Exploitation" style={{ background: '#111', color: '#fff' }}>Web Exploitation</option>
+                                <option value="Cryptography" style={{ background: '#111', color: '#fff' }}>Cryptography</option>
                                 <option value="Reverse Engineering" style={{ background: '#111', color: '#fff' }}>Reverse Engineering</option>
+                                <option value="Binary Exploitation (Pwn)" style={{ background: '#111', color: '#fff' }}>Binary Exploitation (Pwn)</option>
                                 <option value="Forensics" style={{ background: '#111', color: '#fff' }}>Forensics</option>
-                                <option value="Pwn" style={{ background: '#111', color: '#fff' }}>Pwn</option>
-                                <option value="Misc" style={{ background: '#111', color: '#fff' }}>Misc</option>
                                 <option value="OSINT" style={{ background: '#111', color: '#fff' }}>OSINT</option>
+                                <option value="Miscellaneous" style={{ background: '#111', color: '#fff' }}>Miscellaneous</option>
+                                <option value="Networking" style={{ background: '#111', color: '#fff' }}>Networking</option>
+                                <option value="Boot2Root (B2R)" style={{ background: '#111', color: '#fff' }}>Boot2Root (B2R)</option>
+                                <option value="Steganography" style={{ background: '#111', color: '#fff' }}>Steganography</option>
+                                <option value="Mobile Security" style={{ background: '#111', color: '#fff' }}>Mobile Security</option>
+                                <option value="Hardware" style={{ background: '#111', color: '#fff' }}>Hardware</option>
+                                <option value="Cloud Security" style={{ background: '#111', color: '#fff' }}>Cloud Security</option>
+                                <option value="Programming" style={{ background: '#111', color: '#fff' }}>Programming</option>
+                                <option value="Blockchain" style={{ background: '#111', color: '#fff' }}>Blockchain</option>
+                                <option value="Malware Analysis" style={{ background: '#111', color: '#fff' }}>Malware Analysis</option>
+                                <option value="AI" style={{ background: '#111', color: '#fff' }}>AI</option>
                             </select>
                         ) : (
                             <div style={{ color: '#fff', fontSize: '1.2rem', padding: '5px 0' }}>{challengeData.category}</div>

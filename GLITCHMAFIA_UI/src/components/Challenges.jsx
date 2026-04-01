@@ -4,7 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     FaFlag, FaCheckCircle, FaTimesCircle, FaLock,
     FaBug, FaCode, FaDatabase, FaShieldAlt, FaBan, FaGavel,
-    FaArrowRight, FaStar, FaEye
+    FaArrowRight, FaStar, FaEye, FaSearch, FaGlobe, FaTerminal,
+    FaImage, FaMobileAlt, FaMicrochip, FaCloud, FaLaptopCode,
+    FaLink, FaVirus, FaBrain
 } from 'react-icons/fa';
 import BannedAnimation from './BannedAnimation';
 import './Challenges.css';
@@ -16,13 +18,45 @@ const DIFF_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
 const ACCENT = '#22c55e';
 
 const CAT_ICONS = {
-    web: <FaBug />, crypto: <FaLock />, pwn: <FaCode />,
-    forensics: <FaDatabase />, osint: <FaEye />,
-    misc: <FaStar />, default: <FaShieldAlt />
+    'web exploitation': <FaBug />,
+    'cryptography': <FaLock />,
+    'reverse engineering': <FaCode />,
+    'binary exploitation (pwn)': <FaDatabase />,
+    'forensics': <FaEye />,
+    'osint': <FaSearch />,
+    'miscellaneous': <FaStar />,
+    'networking': <FaGlobe />,
+    'boot2root (b2r)': <FaTerminal />,
+    'steganography': <FaImage />,
+    'mobile security': <FaMobileAlt />,
+    'hardware': <FaMicrochip />,
+    'cloud security': <FaCloud />,
+    'programming': <FaLaptopCode />,
+    'blockchain': <FaLink />,
+    'malware analysis': <FaVirus />,
+    'ai': <FaBrain />,
+    default: <FaShieldAlt />
 };
+
 const CAT_COLORS = {
-    web: '#38bdf8', crypto: '#c084fc', pwn: '#f87171',
-    forensics: '#4ade80', osint: '#fbbf24', misc: '#f472b6', default: '#00e5ff'
+    'web exploitation': '#38bdf8',
+    'cryptography': '#c084fc',
+    'reverse engineering': '#f87171',
+    'binary exploitation (pwn)': '#4ade80',
+    'forensics': '#fbbf24',
+    'osint': '#f472b6',
+    'miscellaneous': '#a855f7',
+    'networking': '#3b82f6',
+    'boot2root (b2r)': '#10b981',
+    'steganography': '#f59e0b',
+    'mobile security': '#ec4899',
+    'hardware': '#6366f1',
+    'cloud security': '#06b6d4',
+    'programming': '#8b5cf6',
+    'blockchain': '#f97316',
+    'malware analysis': '#ef4444',
+    'ai': '#14b8a6',
+    default: '#00e5ff'
 };
 function catIcon(cat) { return CAT_ICONS[cat?.toLowerCase()] ?? CAT_ICONS.default; }
 function catColor(cat) { return CAT_COLORS[cat?.toLowerCase()] ?? CAT_COLORS.default; }
