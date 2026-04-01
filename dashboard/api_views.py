@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib.auth.decorators import login_required
+from django_ratelimit.decorators import ratelimit
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +44,12 @@ def dashboard_events_api(request):
     
     return JsonResponse({'events': events_data})
 
+@ratelimit(key='user_or_ip', rate='5/m', block=False)
 @login_required
 @require_POST
 def join_event_api(request, event_id):
+    if getattr(request, 'limited', False):
+        return JsonResponse({'success': False, 'message': 'Too many attempts. Please try again after 1 minute.'}, status=429)
     try:
         data = json.loads(request.body)
         access_code = data.get('accessCode', '').strip()
@@ -124,9 +128,12 @@ def event_details_api(request, event_id):
     
     return JsonResponse(data)
 
+@ratelimit(key='user_or_ip', rate='2/m', block=False)
 @login_required
 @require_POST
 def user_request_event_api(request):
+    if getattr(request, 'limited', False):
+        return JsonResponse({'success': False, 'message': 'Too many event requests. Please wait a moment.'}, status=429)
     try:
         data = json.loads(request.body)
         
