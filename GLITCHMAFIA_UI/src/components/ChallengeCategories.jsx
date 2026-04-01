@@ -1,22 +1,16 @@
 import { motion } from 'framer-motion';
-import { FaSearch, FaCode, FaLock, FaKey, FaBug, FaEye } from 'react-icons/fa';
+import { 
+    FaSearch, FaCode, FaLock, FaBug, FaEye, FaGlobe, FaSkull, 
+    FaStar, FaServer, FaTerminal, FaImage, FaMobileAlt, 
+    FaMicrochip, FaCloud, FaLaptopCode, FaLink, FaVirus, FaBrain 
+} from 'react-icons/fa';
 
 const ChallengeCategories = () => {
     const categories = [
         {
-            name: 'Digital Forensics',
-            icon: <FaSearch />,
-            description: 'Investigate digital evidence and uncover hidden data'
-        },
-        {
             name: 'Web Exploitation',
-            icon: <FaCode />,
+            icon: <FaGlobe />,
             description: 'Find and exploit vulnerabilities in web applications'
-        },
-        {
-            name: 'Reverse Engineering',
-            icon: <FaBug />,
-            description: 'Analyze and understand compiled binaries'
         },
         {
             name: 'Cryptography',
@@ -24,14 +18,79 @@ const ChallengeCategories = () => {
             description: 'Break encryption and decode secret messages'
         },
         {
-            name: 'Binary Exploitation',
-            icon: <FaKey />,
-            description: 'Exploit memory corruption vulnerabilities'
+            name: 'Reverse Engineering',
+            icon: <FaCode />,
+            description: 'Analyze and understand compiled binaries'
+        },
+        {
+            name: 'Binary Exploitation (Pwn)',
+            icon: <FaSkull />,
+            description: 'Exploit memory corruption and system vulnerabilities'
+        },
+        {
+            name: 'Forensics',
+            icon: <FaSearch />,
+            description: 'Investigate digital evidence and uncover hidden data'
         },
         {
             name: 'OSINT',
             icon: <FaEye />,
             description: 'Gather intelligence from open sources'
+        },
+        {
+            name: 'Miscellaneous',
+            icon: <FaStar />,
+            description: 'Miscellaneous challenges encompassing various domains'
+        },
+        {
+            name: 'Networking',
+            icon: <FaServer />,
+            description: 'Analyze network protocols and traffic'
+        },
+        {
+            name: 'Boot2Root (B2R)',
+            icon: <FaTerminal />,
+            description: 'Gain root access on vulnerable systems'
+        },
+        {
+            name: 'Steganography',
+            icon: <FaImage />,
+            description: 'Uncover secrets hidden within digital media'
+        },
+        {
+            name: 'Mobile Security',
+            icon: <FaMobileAlt />,
+            description: 'Analyze and exploit mobile applications'
+        },
+        {
+            name: 'Hardware',
+            icon: <FaMicrochip />,
+            description: 'Investigate and exploit hardware devices'
+        },
+        {
+            name: 'Cloud Security',
+            icon: <FaCloud />,
+            description: 'Secure and exploit cloud infrastructure'
+        },
+        {
+            name: 'Programming',
+            icon: <FaLaptopCode />,
+            description: 'Solve complex algorithmic and coding challenges'
+        },
+        {
+            name: 'Blockchain',
+            icon: <FaLink />,
+            description: 'Investigate smart contracts and decentralized systems'
+        },
+        {
+            name: 'Malware Analysis',
+            icon: <FaVirus />,
+            description: 'Analyze and reverse engineer malicious software'
+        },
+        {
+            name: 'AI',
+            icon: <FaBrain />,
+            description: 'Hacking and securing artificial intelligence systems'
         }
     ];
 

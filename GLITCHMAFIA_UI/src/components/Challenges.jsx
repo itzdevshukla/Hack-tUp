@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     FaFlag, FaCheckCircle, FaTimesCircle, FaLock,
     FaBug, FaCode, FaDatabase, FaShieldAlt, FaBan, FaGavel,
-    FaArrowRight, FaStar, FaEye, FaSearch, FaGlobe, FaTerminal,
+    FaArrowRight, FaStar, FaEye, FaSearch, FaGlobe, FaTerminal, FaServer,
     FaImage, FaMobileAlt, FaMicrochip, FaCloud, FaLaptopCode,
-    FaLink, FaVirus, FaBrain
+    FaLink, FaVirus, FaBrain, FaSkull
 } from 'react-icons/fa';
 import BannedAnimation from './BannedAnimation';
 import './Challenges.css';
@@ -18,14 +18,18 @@ const DIFF_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
 const ACCENT = '#22c55e';
 
 const CAT_ICONS = {
-    'web exploitation': <FaBug />,
+    'web': <FaGlobe />,
+    'web exploitation': <FaGlobe />,
     'cryptography': <FaLock />,
+    'crypto': <FaLock />,
     'reverse engineering': <FaCode />,
-    'binary exploitation (pwn)': <FaDatabase />,
+    'binary exploitation (pwn)': <FaSkull />,
+    'pwn': <FaSkull />,
     'forensics': <FaEye />,
     'osint': <FaSearch />,
     'miscellaneous': <FaStar />,
-    'networking': <FaGlobe />,
+    'misc': <FaStar />,
+    'networking': <FaServer />,
     'boot2root (b2r)': <FaTerminal />,
     'steganography': <FaImage />,
     'mobile security': <FaMobileAlt />,
