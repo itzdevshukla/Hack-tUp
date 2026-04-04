@@ -62,42 +62,69 @@
 
 /* ── Rules Overlay ── */
 .rules-overlay-inner {
-    background: #050505;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    box-shadow: 0 0 60px rgba(0, 0, 0, 0.9), 0 20px 60px rgba(0, 0, 0, 0.8);
+    background: rgba(10, 10, 10, 0.85); /* Glassmorphism background */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     width: 100%;
-    max-width: 760px;
-    max-height: 90vh;
+    max-width: 800px;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
 }
 
 .rules-overlay-header {
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 1.8rem 2.5rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
     flex-shrink: 0;
 }
 
 .rules-overlay-body {
-    padding: 1.5rem 2rem;
+    padding: 2rem 2.5rem;
     overflow-y: auto;
     flex-grow: 1;
-    line-height: 1.7;
+    line-height: 1.8;
+}
+
+/* Custom scrollbar for modal */
+.rules-overlay-body::-webkit-scrollbar {
+    width: 8px;
+}
+.rules-overlay-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.rules-overlay-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+}
+.rules-overlay-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
 }
 
 .rules-overlay-footer {
-    padding: 1.2rem 2rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 1.5rem 2.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
-    gap: 1rem;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.rules-timer-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
     flex-wrap: wrap;
 }
 
@@ -218,14 +245,33 @@
     .rules-overlay-header,
     .rules-overlay-body,
     .rules-overlay-footer {
-        padding-left: 1.2rem;
-        padding-right: 1.2rem;
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+
+    .rules-overlay-header {
+        padding-top: 1.5rem;
+        padding-bottom: 1rem;
+    }
+
+    .rules-overlay-body {
+        padding-top: 1.5rem;
+        padding-bottom: 1.5rem;
     }
 
     .rules-overlay-footer {
         flex-direction: column;
-        align-items: stretch;
-        gap: 0.8rem;
+        align-items: center;
+        text-align: center;
+        gap: 1.2rem;
+        padding-bottom: 1.5rem;
+        padding-top: 1.2rem;
+    }
+
+    .rules-timer-container {
+        justify-content: center;
+        flex-direction: column;
+        gap: 8px;
     }
 
     .challenges-category-section {
@@ -271,19 +317,26 @@
     }
 
     .rules-overlay-inner {
-        border-radius: 14px;
-        max-height: 95vh;
-        margin: 0.5rem;
+        border-radius: 18px;
+        max-height: 92vh;
+        margin: 0;
     }
 
     .rules-overlay-header,
-    .rules-overlay-body {
-        padding-left: 1rem;
-        padding-right: 1rem;
+    .rules-overlay-body,
+    .rules-overlay-footer {
+        padding-left: 1.2rem;
+        padding-right: 1.2rem;
+    }
+    
+    .rules-overlay-footer {
+        padding-bottom: 1.2rem;
+        gap: 1rem;
     }
 
-    .rules-overlay-footer {
-        padding: 1rem;
+    .rules-overlay-footer button {
+        width: 100%;
+        justify-content: center;
     }
 
     .challenges-category-section {

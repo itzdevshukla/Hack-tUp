@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -221,55 +222,61 @@ const Challenges = () => {
         <div className="challenges-page">
 
             {/* ── RULES OVERLAY ── */}
-            <AnimatePresence>
-                {showRulesOverlay && (
-                    <motion.div key="rules-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.93)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-                        <motion.div initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }}
-                            className="rules-overlay-inner">
-                            <div className="rules-overlay-header">
-                                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '10px', color: '#fff', fontSize: '1.3rem' }}><FaGavel /></div>
-                                <div>
-                                    <h2 style={{ margin: 0, color: '#fff', fontSize: '1.4rem', fontWeight: '900' }}>Rules & Regulations</h2>
-                                    <p style={{ margin: 0, color: '#666', fontSize: '0.85rem' }}>You must read these before participating.</p>
-                                </div>
-                            </div>
-                            <div className="rules-overlay-body">
-                                {rules.split('\n').map((line, i) => {
-                                    if (line.startsWith('# ')) return <h1 key={i} style={{ color: ACCENT, fontSize: '1.5rem', margin: '1rem 0 0.5rem', borderBottom: '1px solid rgba(0,229,255,0.15)', paddingBottom: '0.4rem' }}>{line.slice(2)}</h1>;
-                                    if (line.startsWith('## ')) return <h2 key={i} style={{ color: '#e0e0e0', fontSize: '1.15rem', margin: '0.9rem 0 0.3rem' }}>{line.slice(3)}</h2>;
-                                    if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} style={{ color: '#ccc', marginLeft: '1.5rem', listStyle: 'disc', marginBottom: '4px' }}>{line.slice(2)}</li>;
-                                    if (line.trim() === '') return <br key={i} />;
-                                    return <p key={i} style={{ color: '#aaa', margin: '0.2rem 0' }}>{line}</p>;
-                                })}
-                            </div>
-                            <div className="rules-overlay-footer">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ position: 'relative', width: '50px', height: '50px' }}>
-                                        <svg width="50" height="50" viewBox="0 0 50 50" style={{ transform: 'rotate(-90deg)' }}>
-                                            <circle cx="25" cy="25" r="20" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="3" />
-                                            <circle cx="25" cy="25" r="20" fill="none" stroke={countdown > 0 ? ACCENT : '#4ade80'} strokeWidth="3"
-                                                strokeDasharray={`${2 * Math.PI * 20}`}
-                                                strokeDashoffset={`${2 * Math.PI * 20 * (countdown / 15)}`}
-                                                style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }} />
-                                        </svg>
-                                        <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: countdown > 0 ? ACCENT : '#4ade80', fontWeight: 'bold', fontSize: '0.85rem' }}>{countdown}</span>
+            {createPortal(
+                <AnimatePresence>
+                    {showRulesOverlay && (
+                        <motion.div key="rules-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            style={{ position: 'fixed', inset: 0, zIndex: 999999, background: 'rgba(0,0,0,0.93)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                            <motion.div initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }}
+                                className="rules-overlay-inner">
+                                <div className="rules-overlay-header">
+                                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '10px', color: '#fff', fontSize: '1.3rem' }}><FaGavel /></div>
+                                    <div>
+                                        <h2 style={{ margin: 0, color: '#fff', fontSize: '1.4rem', fontWeight: '900' }}>Rules & Regulations</h2>
+                                        <p style={{ margin: 0, color: '#666', fontSize: '0.85rem' }}>You must read these before participating.</p>
                                     </div>
-                                    <span style={{ color: '#666', fontSize: '0.85rem' }}>
-                                        {countdown > 0 ? `Please read carefully — ${countdown}s left` : 'You may now proceed.'}
-                                    </span>
                                 </div>
-                                <motion.button onClick={dismissRulesOverlay} disabled={countdown > 0}
-                                    whileHover={countdown === 0 ? { scale: 1.04 } : {}}
-                                    whileTap={countdown === 0 ? { scale: 0.97 } : {}}
-                                    style={{ padding: '10px 28px', borderRadius: '8px', border: 'none', background: countdown > 0 ? 'rgba(255,255,255,0.04)' : '#fff', color: countdown > 0 ? '#444' : '#000', fontWeight: 'bold', fontSize: '0.95rem', cursor: countdown > 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s', boxShadow: countdown === 0 ? '0 0 20px rgba(255,255,255,0.15)' : 'none' }}>
-                                    I Agree & Continue <FaArrowRight />
-                                </motion.button>
-                            </div>
+                                <div className="rules-overlay-body">
+                                    {rules.split('\n').map((line, i) => {
+                                        if (line.startsWith('# ')) return <h1 key={i} style={{ color: ACCENT, fontSize: '1.5rem', margin: '1rem 0 0.5rem', borderBottom: '1px solid rgba(0,229,255,0.15)', paddingBottom: '0.4rem' }}>{line.slice(2)}</h1>;
+                                        if (line.startsWith('## ')) return <h2 key={i} style={{ color: '#e0e0e0', fontSize: '1.15rem', margin: '0.9rem 0 0.3rem' }}>{line.slice(3)}</h2>;
+                                        if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} style={{ color: '#ccc', marginLeft: '1.5rem', listStyle: 'disc', marginBottom: '4px' }}>{line.slice(2)}</li>;
+                                        if (line.trim() === '') return <br key={i} />;
+                                        return <p key={i} style={{ color: '#aaa', margin: '0.2rem 0' }}>{line}</p>;
+                                    })}
+                                </div>
+                                <div className="rules-overlay-footer">
+                                    <div className="rules-timer-container">
+                                        <div style={{ position: 'relative', width: '50px', height: '50px' }}>
+                                            <svg width="50" height="50" viewBox="0 0 50 50" style={{ transform: 'rotate(-90deg)' }}>
+                                                <circle cx="25" cy="25" r="20" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="3" />
+                                                <circle cx="25" cy="25" r="20" fill="none" stroke={countdown > 0 ? ACCENT : '#4ade80'} strokeWidth="3"
+                                                    strokeDasharray={`${2 * Math.PI * 20}`}
+                                                    strokeDashoffset={`${2 * Math.PI * 20 * (countdown / 15)}`}
+                                                    style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }} />
+                                            </svg>
+                                            <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: countdown > 0 ? ACCENT : '#4ade80', fontWeight: 'bold', fontSize: '0.85rem' }}>{countdown}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+                                            <span style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 'bold' }}>Commitment Required</span>
+                                            <span style={{ color: '#888', fontSize: '0.8rem' }}>
+                                                {countdown > 0 ? `Please read carefully — ${countdown}s left` : 'You may now proceed.'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <motion.button onClick={dismissRulesOverlay} disabled={countdown > 0}
+                                        whileHover={countdown === 0 ? { scale: 1.04 } : {}}
+                                        whileTap={countdown === 0 ? { scale: 0.97 } : {}}
+                                        style={{ padding: '12px 32px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)', background: countdown > 0 ? 'rgba(255,255,255,0.03)' : '#fff', color: countdown > 0 ? '#444' : '#050505', fontWeight: 'bold', fontSize: '0.95rem', cursor: countdown > 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.3s', boxShadow: countdown === 0 ? '0 0 20px rgba(255,255,255,0.15)' : 'none' }}>
+                                        I Agree & Continue <FaArrowRight />
+                                    </motion.button>
+                                </div>
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
 
             {/* ── HEADER ── */}
             <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}

@@ -30,6 +30,10 @@ function EventArenaLayout({ children }) {
     // Shared WS event — child routes subscribe via useOutletContext
     const [lastWsEvent, setLastWsEvent] = useState(null);
 
+    // New notification toast state
+    const [newNotificationToast, setNewNotificationToast] = useState(false);
+    const [toastTimeout, setToastTimeout] = useState(null);
+
     useEffect(() => {
         if (!id) return;
 
@@ -116,6 +120,14 @@ function EventArenaLayout({ children }) {
                         // Use pushed data directly instead of API call
                         setAnnouncements(prev => [message.data, ...prev]);
                         setUnreadCount(prev => prev + 1);
+                        
+                        // Show toast
+                        setNewNotificationToast(true);
+                        if (toastTimeout) clearTimeout(toastTimeout);
+                        const timeoutId = setTimeout(() => {
+                            setNewNotificationToast(false);
+                        }, 5000);
+                        setToastTimeout(timeoutId);
                     } else if (message.type === 'refresh_announcements') {
                         fetchAnnouncements();
                     }
@@ -345,6 +357,61 @@ function EventArenaLayout({ children }) {
                                 ))
                             )}
                         </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ─── New Notification Toast ─── */}
+            <AnimatePresence>
+                {newNotificationToast && !isNotificationOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        style={{
+                            position: 'fixed',
+                            bottom: '90px',
+                            right: '24px',
+                            zIndex: 1002,
+                            background: '#050505',
+                            color: '#ffffff',
+                            border: '1px solid #ffffff',
+                            padding: '10px 20px',
+                            borderRadius: '30px',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            boxShadow: '0 4px 15px rgba(255, 255, 255, 0.1)',
+                            cursor: 'pointer',
+                            fontFamily: 'Share Tech Mono, monospace'
+                        }}
+                        onClick={() => {
+                            setNewNotificationToast(false);
+                            handleOpenNotifications();
+                        }}
+                    >
+                        <FaBullhorn />
+                        <span>1 New Notification</span>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setNewNotificationToast(false);
+                            }}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#ffffff',
+                                cursor: 'pointer',
+                                marginLeft: '5px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '0'
+                            }}
+                        >
+                            <FaTimes />
+                        </button>
                     </motion.div>
                 )}
             </AnimatePresence>
