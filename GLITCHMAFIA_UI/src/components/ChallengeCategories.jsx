@@ -2,124 +2,133 @@ import { motion } from 'framer-motion';
 import { 
     FaSearch, FaCode, FaLock, FaBug, FaEye, FaGlobe, FaSkull, 
     FaStar, FaServer, FaTerminal, FaImage, FaMobileAlt, 
-    FaMicrochip, FaCloud, FaLaptopCode, FaLink, FaVirus, FaBrain 
+    FaMicrochip, FaCloud, FaLaptopCode, FaLink, FaVirus, FaBrain
 } from 'react-icons/fa';
+import './ChallengeCategories.css';
 
 const ChallengeCategories = () => {
     const categories = [
         {
             name: 'Web Exploitation',
             icon: <FaGlobe />,
-            description: 'Find and exploit vulnerabilities in web applications'
+            description: 'Find and exploit vulnerabilities in web applications. Master SQLi, XSS, SSRF, and bypassing WAFs to compromise systems.'
         },
         {
             name: 'Cryptography',
             icon: <FaLock />,
-            description: 'Break encryption and decode secret messages'
+            description: 'Break encryption and decode secret messages. Analyze ciphers, implement known attacks against RSA, AES, and custom crypto flows.'
         },
         {
             name: 'Reverse Engineering',
             icon: <FaCode />,
-            description: 'Analyze and understand compiled binaries'
+            description: 'Analyze and understand compiled binaries. Use disassemblers and debuggers to crack software and extract hidden flags.'
         },
         {
             name: 'Binary Exploitation (Pwn)',
             icon: <FaSkull />,
-            description: 'Exploit memory corruption and system vulnerabilities'
+            description: 'Exploit memory corruption and system vulnerabilities. Drop shells using buffer overflows, ROP chains, and heap exploitation.'
         },
         {
             name: 'Forensics',
             icon: <FaSearch />,
-            description: 'Investigate digital evidence and uncover hidden data'
+            description: 'Investigate digital evidence. Recover deleted files, analyze memory dumps, network pcaps, and hidden data structures.'
         },
         {
             name: 'OSINT',
             icon: <FaEye />,
-            description: 'Gather intelligence from open sources'
+            description: 'Gather intelligence from open sources. Trace digital footprints, geolocate targets, and piece together public data.'
         },
         {
             name: 'Miscellaneous',
             icon: <FaStar />,
-            description: 'Miscellaneous challenges encompassing various domains'
+            description: 'Uncategorized paradigms encompassing various obscure domains, logical puzzles, and esoteric architectures.'
         },
         {
             name: 'Networking',
             icon: <FaServer />,
-            description: 'Analyze network protocols and traffic'
+            description: 'Analyze complex network protocols and traffic. Forge packets, bypass firewalls, and hijack active sessions.'
         },
         {
             name: 'Boot2Root (B2R)',
             icon: <FaTerminal />,
-            description: 'Gain root access on vulnerable systems'
+            description: 'Gain absolute root access on hardened vulnerable systems simulating real-world infrastructure.'
         },
         {
             name: 'Steganography',
             icon: <FaImage />,
-            description: 'Uncover secrets hidden within digital media'
+            description: 'Uncover cryptographic secrets hidden deeply inside innocuous digital media like audio, images, and video files.'
         },
         {
             name: 'Mobile Security',
             icon: <FaMobileAlt />,
-            description: 'Analyze and exploit mobile applications'
+            description: 'Reverse engineer APKs and IPAs, break SSL pinning, and exploit local data storage on mobile devices.'
         },
         {
-            name: 'Hardware',
+            name: 'Hardware / IoT',
             icon: <FaMicrochip />,
-            description: 'Investigate and exploit hardware devices'
+            description: 'Investigate and exploit embedded hardware devices. Extract firmware via UART/SPI and dump flash memory.'
         },
         {
             name: 'Cloud Security',
             icon: <FaCloud />,
-            description: 'Secure and exploit cloud infrastructure'
+            description: 'Exploit misconfigured AWS, GCP, and Azure cloud infrastructure. Escalate privileges and compromise buckets.'
         },
         {
             name: 'Programming',
             icon: <FaLaptopCode />,
-            description: 'Solve complex algorithmic and coding challenges'
+            description: 'Solve intensely fast algorithmic challenges requiring highly optimized programmatic scripts and automation.'
         },
         {
-            name: 'Blockchain',
+            name: 'Blockchain (Web3)',
             icon: <FaLink />,
-            description: 'Investigate smart contracts and decentralized systems'
+            description: 'Investigate and exploit vulnerable smart contracts and decentralized finance protocols.'
         },
         {
             name: 'Malware Analysis',
             icon: <FaVirus />,
-            description: 'Analyze and reverse engineer malicious software'
+            description: 'Analyze and reverse engineer sophisticated malicious software payloads in highly secure sandboxed environments.'
         },
         {
-            name: 'AI',
+            name: 'Artificial Intelligence',
             icon: <FaBrain />,
-            description: 'Hacking and securing artificial intelligence systems'
+            description: 'Hack and secure LLMs and Machine Learning models. Perform prompt injections, model inversion, and data poisoning.'
         }
     ];
 
     return (
         <section className="challenge-categories-section">
-            <div className="categories-container">
+            <div className="container">
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
                     className="categories-header"
                 >
-                    <h2 className="categories-title">Challenge Categories</h2>
-                    <p className="categories-subtitle">Master diverse cybersecurity domains</p>
+                    <div className="hero-badge">
+                        <span>Domain Knowledge</span>
+                    </div>
+                    <h2 className="categories-title neon-text">Mission Vectors</h2>
+                    <p className="categories-subtitle">Identify your target vectors and initiate analysis.</p>
                 </motion.div>
 
-                <div className="categories-grid">
-                    {categories.map((category, index) => (
+                <div className="bento-grid">
+                    {categories.map((cat, idx) => (
                         <motion.div
-                            key={category.name}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.3, delay: index * 0.1 }}
-                            className="category-card"
+                            key={idx}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.4, delay: idx * 0.05 }}
+                            className="bento-card"
                         >
-                            <div className="category-icon">
-                                {category.icon}
+                            <div className="bento-icon-wrapper">
+                                {cat.icon}
                             </div>
-                            <h3 className="category-name">{category.name}</h3>
-                            <p className="category-description">{category.description}</p>
+                            <div className="bento-content">
+                                <h3 className="bento-title">{cat.name}</h3>
+                                <p className="bento-desc">{cat.description}</p>
+                            </div>
+                            <div className="bento-glow"></div>
                         </motion.div>
                     ))}
                 </div>

@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
 import About from './components/About';
-import OurTeam from './components/OurTeam';
 import Login from './components/Login';
 import BannedAnimation from './components/BannedAnimation';
 import BackgroundParticles from './components/BackgroundParticles';
@@ -85,7 +84,6 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
-          <Route path="/our-team" element={<OurTeam />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

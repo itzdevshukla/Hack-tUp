@@ -111,7 +111,6 @@ const Navbar = () => {
         currentLinks = [
             { name: 'Home', href: '/', isPage: true },
             { name: 'About Us', href: '/about', isPage: true },
-            { name: 'Our Team', href: '/our-team', isPage: true },
             // Login/Register are in CTA, Dashboard is in CTA
         ];
     }

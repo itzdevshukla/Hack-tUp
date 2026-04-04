@@ -1,0 +1,135 @@
+.challenge-categories-section {
+    padding: 6rem 0;
+    position: relative;
+    background-color: var(--bg-dark);
+}
+
+.categories-header {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.categories-title {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    font-family: var(--font-heading);
+    text-transform: uppercase;
+}
+
+.categories-subtitle {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+}
+
+/* Beautiful responsive Bento Box grid */
+.bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.bento-card {
+    background: rgba(15, 15, 15, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    backdrop-filter: blur(10px);
+}
+
+.bento-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(57, 255, 20, 0.3);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+}
+
+.bento-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    background: rgba(57, 255, 20, 0.05);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: var(--primary);
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(57, 255, 20, 0.1);
+}
+
+.bento-card:hover .bento-icon-wrapper {
+    background: var(--primary);
+    color: #000;
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 0 20px rgba(57, 255, 20, 0.4);
+}
+
+.bento-title {
+    font-family: var(--font-heading);
+    font-size: 1.2rem;
+    color: white;
+    margin-bottom: 0.8rem;
+    z-index: 2;
+    transition: color 0.3s;
+}
+
+.bento-desc {
+    color: #a0a0a0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    z-index: 2;
+}
+
+.bento-card:hover .bento-title {
+    color: var(--primary);
+}
+
+.bento-glow {
+    position: absolute;
+    bottom: -50px;
+    right: -50px;
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, rgba(57, 255, 20, 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 1;
+    transition: all 0.4s ease;
+}
+
+.bento-card:hover .bento-glow {
+    transform: scale(1.5);
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    .challenge-categories-section {
+        padding: 4rem 0;
+    }
+    
+    .categories-title {
+        font-size: 2.5rem;
+    }
+
+    .bento-grid {
+        grid-template-columns: 1fr;
+        padding: 0 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .categories-title {
+        font-size: 2rem;
+    }
+    
+    .bento-card {
+        padding: 1.5rem;
+    }
+}
