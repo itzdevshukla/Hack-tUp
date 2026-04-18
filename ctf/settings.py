@@ -254,6 +254,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ================= COOKIE SECURITY =================
 # Set Secure cookies in production only (Render requires HTTPS)
+SESSION_COOKIE_AGE = 7200  # 2 hours
+SESSION_SAVE_EVERY_REQUEST = True
 
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
