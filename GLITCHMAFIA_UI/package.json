@@ -21,6 +21,7 @@
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.13.0",
     "react-tsparticles": "^2.12.2",
+    "recharts": "^3.8.1",
     "sass": "^1.97.3",
     "sweetalert2": "^11.26.21",
     "tsparticles": "^3.9.1"

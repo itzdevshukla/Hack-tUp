@@ -35,27 +35,27 @@ const MEDAL = {
 
 function VisualPodiumCard({ player, rank, isTeamMode }) {
     if (!player) return <div style={{ flex: 1 }} />;
-    
+
     const m = MEDAL[rank];
     const name = isTeamMode ? player.name : player.username;
-    
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: rank * 0.15, duration: 0.6, type: 'spring', bounce: 0.4 }}
-            style={{ 
-                flex: 1, 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
+            style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
                 justifyContent: 'flex-end',
                 position: 'relative',
                 zIndex: rank === 1 ? 10 : 5
             }}
         >
             {/* Float Avatar / Stats above Pillar */}
-            <motion.div 
+            <motion.div
                 animate={rank === 1 ? { y: [0, -8, 0] } : {}}
                 transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
                 style={{
@@ -63,13 +63,13 @@ function VisualPodiumCard({ player, rank, isTeamMode }) {
                     marginBottom: '15px', position: 'relative'
                 }}
             >
-                <div style={{ 
-                    width: rank === 1 ? '60px' : '48px', 
-                    height: rank === 1 ? '60px' : '48px', 
-                    borderRadius: '14px', 
-                    background: `rgba(${m.shadow},0.15)`, 
-                    border: `1px solid rgba(${m.shadow},0.5)`, 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                <div style={{
+                    width: rank === 1 ? '60px' : '48px',
+                    height: rank === 1 ? '60px' : '48px',
+                    borderRadius: '14px',
+                    background: `rgba(${m.shadow},0.15)`,
+                    border: `1px solid rgba(${m.shadow},0.5)`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: rank === 1 ? '1.4rem' : '1.1rem', fontWeight: 800,
                     color: m.col, boxShadow: `0 0 25px rgba(${m.shadow},0.4)`,
                     position: 'relative', zIndex: 2, fontFamily: 'Orbitron, sans-serif',
@@ -77,7 +77,7 @@ function VisualPodiumCard({ player, rank, isTeamMode }) {
                 }}>
                     {m.icon}
                 </div>
-                
+
                 {rank === 1 && (
                     <div style={{ position: 'absolute', top: '-15px', color: m.col, filter: 'drop-shadow(0 0 5px #9ACD32)' }}>
                         <FaTrophy style={{ fontSize: '1.2rem' }} />
@@ -397,7 +397,7 @@ export default function EventLeaderboard() {
                                 <FaCrown style={{ color: '#9ACD32', fontSize: '1.2rem', filter: 'drop-shadow(0 0 10px #9ACD32)' }} />
                                 <span style={{ fontSize: '1rem', color: '#fff', letterSpacing: '4px', textTransform: 'uppercase', fontFamily: 'Orbitron, sans-serif', fontWeight: 800 }}>Hall of Fame</span>
                             </div>
-                            
+
                             <div style={{ flex: 1, position: 'relative' }}>
                                 <PodiumPanel board={activeBoard} isTeamMode={isTeamMode} />
                             </div>

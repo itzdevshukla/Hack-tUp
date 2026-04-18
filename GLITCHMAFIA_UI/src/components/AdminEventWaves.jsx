@@ -121,10 +121,21 @@ export default function AdminEventWaves() {
             type: 'danger', confirmText: 'DELETE',
             onConfirm: async () => {
                 setAlertOpen(false);
-                await fetch(`/api/admin/event/${id}/wave/${wave.id}/`, { method: 'DELETE', headers: H });
-                setWaves(p => p.filter(w => w.id !== wave.id));
-                if (pickingForWave === wave.id) setPickingForWave(null);
-                if (expandedWave === wave.id) setExpandedWave(null);
+                try {
+                    const res = await fetch(`/api/admin/event/${id}/wave/${wave.id}/`, { 
+                        method: 'DELETE', 
+                        headers: { ...H, 'X-CSRFToken': getCsrfToken() } 
+                    });
+                    if (res.ok) {
+                        setWaves(p => p.filter(w => w.id !== wave.id));
+                        if (pickingForWave === wave.id) setPickingForWave(null);
+                        if (expandedWave === wave.id) setExpandedWave(null);
+                    } else {
+                        setError('Failed to delete wave');
+                    }
+                } catch {
+                    setError('Failed to delete wave');
+                }
             },
             onCancel: () => setAlertOpen(false)
         });

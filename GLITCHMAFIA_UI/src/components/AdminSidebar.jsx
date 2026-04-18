@@ -7,7 +7,7 @@ import { getCsrfToken } from '../utils/csrf';
 
 function AdminSidebar({ isOpen, setIsOpen }) {
     const location = useLocation();
-    const { user, logout } = useAuth();
+    const { user, logoutUser: logout } = useAuth();
 
     // Helper to determine active route
     const isActive = (path) => {
