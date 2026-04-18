@@ -36,23 +36,26 @@ def enforce_single_session(sender, user, request=None, **kwargs):
         return
         
     new_session_key = request.session.session_key
+    user_id_str = str(user.id)
     
-    # Robustly get or create profile
+    # 1. Fast path wipe via UserProfile
     try:
         profile, created = UserProfile.objects.get_or_create(user=user)
-    except Exception:
-        return
-    
-    # Wipe old session if it differs
-    if profile.current_session_key and profile.current_session_key != new_session_key:
-        try:
+        if profile.current_session_key and profile.current_session_key != new_session_key:
             Session.objects.filter(session_key=profile.current_session_key).delete()
-        except Exception:
-            pass
             
-    profile.current_session_key = new_session_key
-    try:
+        profile.current_session_key = new_session_key
         profile.save(update_fields=['current_session_key'])
     except Exception:
-        profile.save()
+        pass
+
+    # 2. Bulletproof wipe (catches any desynced or multiple lingering sessions)
+    try:
+        active_sessions = Session.objects.filter(expire_date__gte=timezone.now()).exclude(session_key=new_session_key)
+        for session in active_sessions:
+            data = session.get_decoded()
+            if str(data.get('_auth_user_id', '')) == user_id_str:
+                session.delete()
+    except Exception:
+        pass
 
