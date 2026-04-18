@@ -31,24 +31,28 @@ class UserProfile(models.Model):
 
 @receiver(user_logged_in)
 def enforce_single_session(sender, user, request=None, **kwargs):
-    if not hasattr(request, 'session'):
+    # Safe check if session exists
+    if not getattr(request, 'session', None) or not request.session.session_key:
         return
-
-    # Ensure session_key is created without wiping data
-    if not request.session.session_key:
-        request.session.save()
-    
+        
     new_session_key = request.session.session_key
     
-    profile, created = UserProfile.objects.get_or_create(user=user)
+    # Robustly get or create profile
+    try:
+        profile, created = UserProfile.objects.get_or_create(user=user)
+    except Exception:
+        return
     
+    # Wipe old session if it differs
     if profile.current_session_key and profile.current_session_key != new_session_key:
         try:
             Session.objects.filter(session_key=profile.current_session_key).delete()
         except Exception:
             pass
             
-    if new_session_key:
-        profile.current_session_key = new_session_key
+    profile.current_session_key = new_session_key
+    try:
+        profile.save(update_fields=['current_session_key'])
+    except Exception:
         profile.save()
 
