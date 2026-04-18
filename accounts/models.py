@@ -30,7 +30,7 @@ class UserProfile(models.Model):
         return f"Profile({self.user.username}) TOTP={'ON' if self.totp_enabled else 'OFF'}"
 
 @receiver(user_logged_in)
-def enforce_single_session(sender, user, request, **kwargs):
+def enforce_single_session(sender, user, request=None, **kwargs):
     if not hasattr(request, 'session'):
         return
 
