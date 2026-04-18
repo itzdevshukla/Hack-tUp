@@ -31,8 +31,12 @@ class UserProfile(models.Model):
 
 @receiver(user_logged_in)
 def enforce_single_session(sender, user, request, **kwargs):
+    if not hasattr(request, 'session'):
+        return
+
+    # Ensure session_key is created without wiping data
     if not request.session.session_key:
-        request.session.create()
+        request.session.save()
     
     new_session_key = request.session.session_key
     
@@ -44,6 +48,7 @@ def enforce_single_session(sender, user, request, **kwargs):
         except Exception:
             pass
             
-    profile.current_session_key = new_session_key
-    profile.save()
+    if new_session_key:
+        profile.current_session_key = new_session_key
+        profile.save()
 
