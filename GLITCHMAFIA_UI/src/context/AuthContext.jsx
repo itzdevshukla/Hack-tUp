@@ -43,7 +43,31 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         checkStatus();
-    }, []);
+
+        // Passive session monitor to detect remote logouts or timeouts
+        const intervalId = setInterval(async () => {
+            try {
+                const response = await fetch('/api/auth/status/');
+                const data = await response.json();
+                
+                setUser((prevUser) => {
+                    if (prevUser && !data.is_authenticated) {
+                        alert("Session Expired: You have been logged out.\n\nYour account was accessed from another device, or your session timed out.");
+                        navigate('/login');
+                        return null;
+                    }
+                    if (data.is_authenticated) {
+                        return data.user;
+                    }
+                    return null;
+                });
+            } catch (err) {
+                // Ignore temporary network drops
+            }
+        }, 10000); // Check every 10 seconds
+
+        return () => clearInterval(intervalId);
+    }, [navigate]);
 
     const loginUser = async (e, onError) => {
         e.preventDefault();
