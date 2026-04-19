@@ -95,8 +95,8 @@ function CustomTooltip({ active, payload, label }) {
                 </div>
                 {sorted.map((pld, idx) => (
                     <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', marginBottom: '8px', fontSize: '0.85rem' }}>
-                        <span style={{ color: '#eaeaea', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pld.color, display: 'inline-block', boxShadow: `0 0 8px ${pld.color}` }} />
+                        <span style={{ color: pld.color, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pld.color, display: 'inline-block', boxShadow: `0 0 10px ${pld.color}` }} />
                             {pld.name}
                         </span>
                         <span style={{ color: pld.color, fontWeight: 900, fontFamily: 'Orbitron, sans-serif', textShadow: `0 0 10px ${pld.color}66` }}>
@@ -111,6 +111,9 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 function TimelineGraph({ board, isTeamMode }) {
+    const colorMapRef = useRef({});
+    const colorIndexRef = useRef(0);
+
     if (board.length === 0) {
         return (
             <div style={{ height: '350px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', color: '#2a3a2a' }}>
@@ -121,6 +124,14 @@ function TimelineGraph({ board, isTeamMode }) {
     }
 
     const top10 = board.slice(0, 10);
+    
+    // Assign stable locked colors to players so their lines don't swap dynamically when overtaking
+    top10.forEach(player => {
+        if (!colorMapRef.current[player.id]) {
+            colorMapRef.current[player.id] = CHART_COLORS[colorIndexRef.current % CHART_COLORS.length];
+            colorIndexRef.current += 1;
+        }
+    });
     
     let chartData = [];
     let customTop10 = top10;
@@ -200,12 +211,22 @@ function TimelineGraph({ board, isTeamMode }) {
     }
 
     const renderCustomDot = (props) => {
-        const { cx, cy, payload, dataKey, stroke } = props;
+        const { cx, cy, payload, dataKey, lineFill } = props;
         if (isNaN(cx) || isNaN(cy) || cx === undefined || cy === undefined) return null;
         
         // Only draw dot if this EXACT tick was an actual solve for this player
         if (payload[`${dataKey}_isEvent`] && payload[`${dataKey}_eventDetails`]?.id !== 'start' && payload[`${dataKey}_eventDetails`]?.id !== 'now') {
-            return <circle key={`${dataKey}-${payload.rawTime || cx}`} cx={cx} cy={cy} r={4} fill={stroke} strokeWidth={0} style={{ filter: `drop-shadow(0 0 6px ${stroke})` }} />;
+            return <circle key={`${dataKey}-${payload.rawTime || cx}`} cx={cx} cy={cy} r={4} fill={lineFill} strokeWidth={0} style={{ filter: `drop-shadow(0 0 6px ${lineFill})` }} />;
+        }
+        return null;
+    };
+
+    const renderActiveHoverDot = (props) => {
+        const { cx, cy, payload, dataKey, lineFill } = props;
+        if (isNaN(cx) || isNaN(cy) || cx === undefined || cy === undefined) return null;
+        
+        if (payload[`${dataKey}_isEvent`]) {
+            return <circle key={`active-${dataKey}-${cx}`} cx={cx} cy={cy} r={7} fill={lineFill} stroke="#050505" strokeWidth={2} style={{ filter: `drop-shadow(0 0 10px ${lineFill})` }} />;
         }
         return null;
     };
@@ -235,9 +256,9 @@ function TimelineGraph({ board, isTeamMode }) {
                             wrapperStyle={{ fontSize: '12px', paddingTop: '15px', color: '#ccc', fontFamily: 'Orbitron, sans-serif' }}
                             iconType="circle"
                         />
-                        {top10.map((player, idx) => {
+                        {top10.map((player) => {
                             const name = isTeamMode ? player.name : player.username;
-                            const color = CHART_COLORS[idx % CHART_COLORS.length];
+                            const color = colorMapRef.current[player.id];
                             return (
                                 <Line 
                                     key={player.id}
@@ -246,8 +267,8 @@ function TimelineGraph({ board, isTeamMode }) {
                                     dataKey={player.id}
                                     stroke={color}
                                     strokeWidth={3}
-                                    dot={renderCustomDot}
-                                    activeDot={{ r: 6, fill: color, stroke: '#080808', strokeWidth: 2 }}
+                                    dot={(props) => renderCustomDot({ ...props, lineFill: color })}
+                                    activeDot={(props) => renderActiveHoverDot({ ...props, lineFill: color })}
                                     isAnimationActive={false}
                                 />
                             );
