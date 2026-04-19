@@ -1,8 +1,37 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaClock, FaTrophy, FaMedal, FaFlag, FaUsers, FaUser, FaCrown, FaKhanda } from 'react-icons/fa';
+import { FaClock, FaTrophy, FaMedal, FaFlag, FaUsers, FaUser, FaCrown, FaChartLine, FaExclamationTriangle } from 'react-icons/fa';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+/* ─────────────────────────────────────────────────────────────────
+   ERROR BOUNDARY
+───────────────────────────────────────────────────────────────── */
+class ChartErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+    }
+    static getDerivedStateFromError(error) {
+        return { hasError: true };
+    }
+    componentDidCatch(error, errorInfo) {
+        console.error("Recharts Engine Faulted:", error, errorInfo);
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{ height: '350px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#ff4c4c' }}>
+                    <FaExclamationTriangle style={{ fontSize: '2.5rem', marginBottom: '1rem', opacity: 0.6 }} />
+                    <p style={{ margin: 0, fontFamily: 'Orbitron, sans-serif', letterSpacing: '1px' }}>Timeline Vis Offline</p>
+                    <p style={{ margin: '8px 0 0 0', fontSize: '0.75rem', opacity: 0.6 }}>A rendering fault occurred. Waiting for next update...</p>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 /* ─────────────────────────────────────────────────────────────────
    HELPERS
@@ -25,102 +54,58 @@ function initials(name = '') {
 
 
 /* ─────────────────────────────────────────────────────────────────
-   PODIUM PANEL — top 3 Graphical Layout
+   TIMELINE GRAPH — Top 10 Graphical Layout
 ───────────────────────────────────────────────────────────────── */
-const MEDAL = {
-    1: { col: '#9ACD32', shadow: '57,255,20', icon: <FaCrown />, height: '160px' },
-    2: { col: '#60a5fa', shadow: '96,165,250', icon: <FaMedal />, height: '110px' },
-    3: { col: '#a78bfa', shadow: '167,139,250', icon: <FaMedal />, height: '80px' },
-};
+const CHART_COLORS = [
+    '#39FF14', // Neon Green
+    '#60A5FA', // Blue
+    '#A78BFA', // Purple
+    '#F472B6', // Pink
+    '#FBBF24', // Yellow
+    '#34D399', // Emerald
+    '#F87171', // Red
+    '#38BDF8', // Sky
+    '#FB923C', // Orange
+    '#A3E635'  // Lime
+];
 
-function VisualPodiumCard({ player, rank, isTeamMode }) {
-    if (!player) return <div style={{ flex: 1 }} />;
-
-    const m = MEDAL[rank];
-    const name = isTeamMode ? player.name : player.username;
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: rank * 0.15, duration: 0.6, type: 'spring', bounce: 0.4 }}
-            style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                position: 'relative',
-                zIndex: rank === 1 ? 10 : 5
-            }}
-        >
-            {/* Float Avatar / Stats above Pillar */}
-            <motion.div
-                animate={rank === 1 ? { y: [0, -8, 0] } : {}}
-                transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    marginBottom: '15px', position: 'relative'
-                }}
-            >
-                <div style={{
-                    width: rank === 1 ? '60px' : '48px',
-                    height: rank === 1 ? '60px' : '48px',
-                    borderRadius: '14px',
-                    background: `rgba(${m.shadow},0.15)`,
-                    border: `1px solid rgba(${m.shadow},0.5)`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: rank === 1 ? '1.4rem' : '1.1rem', fontWeight: 800,
-                    color: m.col, boxShadow: `0 0 25px rgba(${m.shadow},0.4)`,
-                    position: 'relative', zIndex: 2, fontFamily: 'Orbitron, sans-serif',
-                    backdropFilter: 'blur(5px)'
-                }}>
-                    {m.icon}
-                </div>
-
-                {rank === 1 && (
-                    <div style={{ position: 'absolute', top: '-15px', color: m.col, filter: 'drop-shadow(0 0 5px #9ACD32)' }}>
-                        <FaTrophy style={{ fontSize: '1.2rem' }} />
-                    </div>
-                )}
-
-                <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                    <div style={{ fontWeight: 800, fontSize: rank === 1 ? '1rem' : '0.9rem', color: '#e0e0e0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>
-                        {name}
-                    </div>
-                    <div style={{ fontWeight: 900, fontFamily: 'Orbitron, sans-serif', color: m.col, fontSize: rank === 1 ? '1.3rem' : '1.1rem', marginTop: '4px', textShadow: `0 0 10px rgba(${m.shadow},0.4)` }}>
-                        {player.points}
-                    </div>
-                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
-                        {player.flags} flags
-                    </div>
-                </div>
-            </motion.div>
-
-            {/* Glowing Pillar */}
+function CustomTooltip({ active, payload, label }) {
+    if (active && payload && payload.length) {
+        // Sort highest point on top
+        const sorted = [...payload].sort((a, b) => b.value - a.value);
+        return (
             <div style={{
-                width: '100%',
-                height: m.height,
-                background: `linear-gradient(to top, rgba(${m.shadow},0.05) 0%, rgba(${m.shadow},0.3) 100%)`,
-                borderTop: `3px solid ${m.col}`,
-                borderLeft: `1px solid rgba(${m.shadow},0.2)`,
-                borderRight: `1px solid rgba(${m.shadow},0.2)`,
-                boxShadow: `inset 0 20px 40px rgba(${m.shadow},0.15), 0 -10px 30px rgba(${m.shadow},0.1)`,
-                borderTopLeftRadius: '4px',
-                borderTopRightRadius: '4px',
-                display: 'flex',
-                justifyContent: 'center',
-                paddingTop: '15px'
+                background: 'rgba(5, 5, 5, 0.85)',
+                border: '1px solid rgba(154, 205, 50, 0.25)',
+                padding: '12px 18px',
+                borderRadius: '12px',
+                backdropFilter: 'blur(12px)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.9), inset 0 0 20px rgba(154, 205, 50, 0.05)',
+                minWidth: '220px',
+                color: '#fff'
             }}>
-                <span style={{ fontFamily: 'Orbitron, sans-serif', fontSize: '2.5rem', fontWeight: 900, color: `rgba(${m.shadow},0.3)` }}>
-                    {rank}
-                </span>
+                <div style={{ margin: '0 0 12px 0', color: '#9ACD32', fontSize: '0.75rem', fontFamily: 'Orbitron, sans-serif', letterSpacing: '2px', borderBottom: '1px solid rgba(154,205,50,0.15)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <FaClock style={{ fontSize: '0.7rem' }} />
+                    {payload[0]?.payload?.rawTime ? payload[0].payload.rawTime.replace('T', ' ').substring(0, 19) : label}
+                </div>
+                {sorted.map((pld, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', marginBottom: '8px', fontSize: '0.85rem' }}>
+                        <span style={{ color: '#eaeaea', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pld.color, display: 'inline-block', boxShadow: `0 0 8px ${pld.color}` }} />
+                            {pld.name}
+                        </span>
+                        <span style={{ color: pld.color, fontWeight: 900, fontFamily: 'Orbitron, sans-serif', textShadow: `0 0 10px ${pld.color}66` }}>
+                            {pld.value}
+                        </span>
+                    </div>
+                ))}
             </div>
-        </motion.div>
-    );
+        );
+    }
+    return null;
 }
 
-function PodiumPanel({ board, isTeamMode }) {
+function TimelineGraph({ board, isTeamMode }) {
     if (board.length === 0) {
         return (
             <div style={{ height: '350px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', color: '#2a3a2a' }}>
@@ -130,18 +115,142 @@ function PodiumPanel({ board, isTeamMode }) {
         );
     }
 
-    const p1 = board[0];
-    const p2 = board[1];
-    const p3 = board[2];
+    const top10 = board.slice(0, 10);
+    
+    let chartData = [];
+    let customTop10 = top10;
+    try {
+        // 1. Rebuild sanitized chronological history per player
+        const sanitizedTimelines = {};
+        const nowIso = new Date().toISOString();
+
+        top10.forEach(p => {
+            sanitizedTimelines[p.id] = [];
+            if (!p.history || !Array.isArray(p.history)) return;
+            
+            // Filter out dummy backend 'start' and 'now' to prevent temporal paradoxes!
+            const solvesOnly = p.history.filter(h => h?.id !== 'start' && h?.id !== 'now');
+            solvesOnly.sort((a,b) => new Date(a.rawTime).getTime() - new Date(b.rawTime).getTime());
+            
+            let runningTotal = 0;
+            solvesOnly.forEach(h => {
+                runningTotal += h.points || 0;
+                h.total = runningTotal;
+            });
+
+            const nowEvent = { rawTime: nowIso, id: 'now', total: runningTotal, points: 0 };
+            sanitizedTimelines[p.id] = [...solvesOnly, nowEvent];
+        });
+
+        // 2. Establish universal Start Baseline across all players (30 mins before first solve)
+        let globalStart = Date.now();
+        top10.forEach(p => {
+            const solves = sanitizedTimelines[p.id].filter(h => h.id !== 'now');
+            if (solves.length > 0) {
+                const firstT = new Date(solves[0].rawTime).getTime();
+                if (!isNaN(firstT) && firstT < globalStart) globalStart = firstT;
+            }
+        });
+        const startIso = new Date(globalStart - 30 * 60000).toISOString();
+
+        top10.forEach(p => {
+            if (sanitizedTimelines[p.id]) {
+                sanitizedTimelines[p.id].unshift({ rawTime: startIso, id: 'start', total: 0, points: 0 });
+            }
+        });
+
+        // 3. Collect all unique valid times
+        const timeSet = new Set();
+        top10.forEach(p => {
+            if (sanitizedTimelines[p.id]) {
+                sanitizedTimelines[p.id].forEach(h => { if(h.rawTime) timeSet.add(h.rawTime) });
+            }
+        });
+        const sortedTimes = Array.from(timeSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+        // 4. Build chart array with pure carry-forward step
+        const currentScores = {};
+        chartData = sortedTimes.map(timeStr => {
+            const point = { 
+                rawTime: timeStr, 
+                timeLabel: new Date(timeStr).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) 
+            };
+            
+            top10.forEach(p => {
+                const hList = sanitizedTimelines[p.id] || [];
+                const eventAtTime = hList.find(h => h.rawTime === timeStr);
+                if (eventAtTime) {
+                    currentScores[p.id] = eventAtTime.total;
+                    point[`${p.id}_isEvent`] = true;
+                    point[`${p.id}_eventDetails`] = eventAtTime;
+                }
+                point[p.id] = currentScores[p.id] !== undefined ? currentScores[p.id] : 0; 
+            });
+            
+            return point;
+        });
+    } catch (parseError) {
+        console.error("Timeline Rendering Fault Escaped:", parseError);
+        chartData = []; // degrade gracefully
+    }
+
+    const renderCustomDot = (props) => {
+        const { cx, cy, payload, dataKey, stroke } = props;
+        if (isNaN(cx) || isNaN(cy) || cx === undefined || cy === undefined) return null;
+        
+        // Only draw dot if this EXACT tick was an actual solve for this player
+        if (payload[`${dataKey}_isEvent`] && payload[`${dataKey}_eventDetails`]?.id !== 'start' && payload[`${dataKey}_eventDetails`]?.id !== 'now') {
+            return <circle key={`${dataKey}-${payload.rawTime || cx}`} cx={cx} cy={cy} r={4} fill={stroke} strokeWidth={0} style={{ filter: `drop-shadow(0 0 6px ${stroke})` }} />;
+        }
+        return null;
+    };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '380px', justifyContent: 'flex-end', padding: '10px 20px 0 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '15px', height: '100%', paddingBottom: '20px' }}>
-                <VisualPodiumCard player={p2} rank={2} isTeamMode={isTeamMode} />
-                <VisualPodiumCard player={p1} rank={1} isTeamMode={isTeamMode} />
-                <VisualPodiumCard player={p3} rank={3} isTeamMode={isTeamMode} />
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '420px', flex: 1, padding: '10px 0 0 0' }}>
+            <div style={{ width: '100%', paddingBottom: '20px' }}>
+                <ResponsiveContainer width="100%" height={400}>
+                    <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
+                        <XAxis 
+                            dataKey="timeLabel" 
+                            stroke="rgba(255,255,255,0.4)" 
+                            fontSize={11} 
+                            tickMargin={12} 
+                            tick={{ fill: 'rgba(255,255,255,0.5)' }}
+                            minTickGap={30}
+                        />
+                        <YAxis 
+                            stroke="rgba(255,255,255,0.4)" 
+                            fontSize={11} 
+                            tickMargin={12}
+                            tick={{ fill: 'rgba(255,255,255,0.5)' }}
+                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} shared={false} />
+                        <Legend 
+                            wrapperStyle={{ fontSize: '12px', paddingTop: '15px', color: '#ccc', fontFamily: 'Orbitron, sans-serif' }}
+                            iconType="circle"
+                        />
+                        {top10.map((player, idx) => {
+                            const name = isTeamMode ? player.name : player.username;
+                            const color = CHART_COLORS[idx % CHART_COLORS.length];
+                            return (
+                                <Line 
+                                    key={player.id}
+                                    type="stepAfter"
+                                    name={name}
+                                    dataKey={player.id}
+                                    stroke={color}
+                                    strokeWidth={3}
+                                    dot={renderCustomDot}
+                                    activeDot={{ r: 6, fill: color, stroke: '#080808', strokeWidth: 2 }}
+                                    isAnimationActive={false}
+                                />
+                            );
+                        })}
+                    </LineChart>
+                </ResponsiveContainer>
             </div>
-
+            
             {/* Separator & Stats */}
             <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(154,205,50,0.15), transparent)', margin: '15px 0 10px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#3a5a3a', padding: '0 10px' }}>
@@ -263,9 +372,10 @@ export default function EventLeaderboard() {
                     </div>
                 ) : (
                     <div className="lb-layout-grid" style={{
-                        display: 'grid',
+                        display: 'flex',
+                        flexDirection: 'column',
                         gap: 'clamp(1.5rem, 3vw, 2.5rem)',
-                        alignItems: 'start',
+                        alignItems: 'stretch',
                     }}>
 
                         {/* ── LEFT: Ranking Table (WIDER & SCROLLABLE) ── */}
@@ -308,7 +418,8 @@ export default function EventLeaderboard() {
                                             const name = isTeamMode ? player.name : player.username;
                                             const top1 = rank === 1;
                                             const top3 = rank <= 3;
-                                            const m = MEDAL[rank];
+                                            const m_col = CHART_COLORS[(rank-1) % CHART_COLORS.length];
+                                            const m = rank <= 3 ? { col: m_col, shadow: rank===1?'57,255,20':rank===2?'96,165,250':'167,139,250', icon: rank===1?<FaCrown/>:<FaMedal/> } : null;
 
                                             return (
                                                 <motion.div
@@ -376,9 +487,9 @@ export default function EventLeaderboard() {
                             </div>
                         </motion.div>
 
-                        {/* ── RIGHT: Visual Podium ── */}
+                        {/* ── TOP: Graphical Timeline ── */}
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
+                            initial={{ opacity: 0, scale: 0.98 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.6, delay: 0.2 }}
                             style={{
@@ -393,13 +504,15 @@ export default function EventLeaderboard() {
                                 order: 1
                             }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '3rem' }}>
-                                <FaCrown style={{ color: '#9ACD32', fontSize: '1.2rem', filter: 'drop-shadow(0 0 10px #9ACD32)' }} />
-                                <span style={{ fontSize: '1rem', color: '#fff', letterSpacing: '4px', textTransform: 'uppercase', fontFamily: 'Orbitron, sans-serif', fontWeight: 800 }}>Hall of Fame</span>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '2rem' }}>
+                                <FaChartLine style={{ color: '#9ACD32', fontSize: '1.2rem', filter: 'drop-shadow(0 0 10px #9ACD32)' }} />
+                                <span style={{ fontSize: '1rem', color: '#fff', letterSpacing: '4px', textTransform: 'uppercase', fontFamily: 'Orbitron, sans-serif', fontWeight: 800 }}>Top 10 Timeline</span>
                             </div>
 
                             <div style={{ flex: 1, position: 'relative' }}>
-                                <PodiumPanel board={activeBoard} isTeamMode={isTeamMode} />
+                                <ChartErrorBoundary>
+                                    <TimelineGraph board={activeBoard} isTeamMode={isTeamMode} />
+                                </ChartErrorBoundary>
                             </div>
                         </motion.div>
                     </div>
@@ -423,12 +536,7 @@ export default function EventLeaderboard() {
                 
                 /* Layout Grid CSS */
                 .lb-layout-grid {
-                    grid-template-columns: 1fr 1.5fr; /* Table is wider than podium */
-                }
-                @media (max-width: 1024px) {
-                    .lb-layout-grid {
-                        grid-template-columns: 1fr;
-                    }
+                    /* Stacks vertically */
                 }
 
                 /* Custom Table Scrollbar */

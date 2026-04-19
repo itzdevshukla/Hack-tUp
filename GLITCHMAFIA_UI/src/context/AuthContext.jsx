@@ -44,29 +44,32 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         checkStatus();
 
-        // Passive session monitor to detect remote logouts or timeouts
-        const intervalId = setInterval(async () => {
-            try {
-                const response = await fetch('/api/auth/status/');
-                const data = await response.json();
-                
+        // ── LAZY INTERCEPTION (Industry Standard SPA Auth) ──
+        // Instead of polling the server every 10 seconds, we transparently wrap the 
+        // browser's native fetch API. Any time ANY component makes a request, if the 
+        // Django backend returns a 401 (Unauthorized) or 403 (Forbidden), we instantly 
+        // detect it and kick the user out. Zero idle server load!
+        const originalFetch = window.fetch;
+        
+        window.fetch = async (...args) => {
+            const response = await originalFetch(...args);
+            // If the backend rejects any secure request due to an expired/revoked session
+            if (response.status === 401) {
                 setUser((prevUser) => {
-                    if (prevUser && !data.is_authenticated) {
-                        alert("Session Expired: You have been logged out.\n\nYour account was accessed from another device, or your session timed out.");
+                    if (prevUser) {
+                        alert("Session Expired: You have been logged out.\n\nPlease log in again.");
                         navigate('/login');
-                        return null;
-                    }
-                    if (data.is_authenticated) {
-                        return data.user;
                     }
                     return null;
                 });
-            } catch (err) {
-                // Ignore temporary network drops
             }
-        }, 10000); // Check every 10 seconds
+            return response;
+        };
 
-        return () => clearInterval(intervalId);
+        // Cleanup interceptor on unmount to prevent leaks or duplicate wrapping
+        return () => {
+            window.fetch = originalFetch;
+        };
     }, [navigate]);
 
     const loginUser = async (e, onError) => {
