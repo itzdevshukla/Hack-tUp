@@ -71,8 +71,13 @@ const CHART_COLORS = [
 
 function CustomTooltip({ active, payload, label }) {
     if (active && payload && payload.length) {
+        // Filter out everyone except the ACTUAL person who had an event/solve exactly at this tick!
+        const isolatedPayload = payload.filter(pld => pld.payload[`${pld.dataKey}_isEvent`]);
+        // Fast fallback if someone hovers obscurely and no exact match is found
+        const renderPayload = isolatedPayload.length > 0 ? isolatedPayload : payload;
+
         // Sort highest point on top
-        const sorted = [...payload].sort((a, b) => b.value - a.value);
+        const sorted = [...renderPayload].sort((a, b) => b.value - a.value);
         return (
             <div style={{
                 background: 'rgba(5, 5, 5, 0.85)',
@@ -236,7 +241,7 @@ function TimelineGraph({ board, isTeamMode }) {
                             return (
                                 <Line 
                                     key={player.id}
-                                    type="stepAfter"
+                                    type="monotone"
                                     name={name}
                                     dataKey={player.id}
                                     stroke={color}
