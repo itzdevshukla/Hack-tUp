@@ -10,6 +10,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AlterUniqueTogether(
+            name='leaguemembership',
+            unique_together=None,
+        ),
         migrations.RemoveField(
             model_name='leaguemembership',
             name='league',
@@ -17,10 +21,6 @@ class Migration(migrations.Migration):
         migrations.RemoveField(
             model_name='event',
             name='league',
-        ),
-        migrations.AlterUniqueTogether(
-            name='leaguemembership',
-            unique_together=None,
         ),
         migrations.RemoveField(
             model_name='leaguemembership',

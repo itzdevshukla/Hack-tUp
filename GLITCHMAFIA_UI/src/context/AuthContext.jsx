@@ -84,6 +84,14 @@ export const AuthProvider = ({ children }) => {
                 },
                 body: JSON.stringify({ username, password })
             });
+
+            // Prevent JSON parsing crash on 500 HTML errors
+            const contentType = response.headers.get("content-type");
+            if (!contentType || contentType.indexOf("application/json") === -1) {
+                 if (onError) onError(`Server Error: Received an unexpected response (Status: ${response.status}). Check backend logs.`);
+                 return;
+            }
+
             const data = await response.json();
 
             if (response.status === 429) {
