@@ -15,9 +15,9 @@ class CustomUserAdmin(UserAdmin):
     ordering = ('-date_joined',)
 
 # Site header
-admin.site.site_header = "Hack!t Admin Portal"
-admin.site.site_title = "Hack!t Admin"
-admin.site.index_title = "Welcome to Hack!t Administration"
+admin.site.site_header = "Hack!tUp Admin Portal"
+admin.site.site_title = "Hack!tUp Admin"
+admin.site.index_title = "Welcome to Hack!tUp Administration"
 
 
 

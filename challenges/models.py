@@ -4,6 +4,19 @@ from django.utils import timezone
 from administration.models import Event
 
 
+class Category(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    description = models.TextField(blank=True, null=True)
+    icon = models.CharField(max_length=50, default="FaFlag", help_text="React icon name (e.g., FaGlobe, FaBug)")
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name_plural = "Categories"
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
 class ChallengeWave(models.Model):
     """A named batch of challenges released manually by the organiser."""
     event = models.ForeignKey(
@@ -61,9 +74,11 @@ class Challenge(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
 
-    category = models.CharField(
-        max_length=20,
-        choices=CATEGORY_CHOICES
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='challenges'
     )
 
     difficulty = models.CharField(
