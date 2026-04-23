@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -148,9 +148,13 @@ function CustomTooltip({ active, payload, label }) {
     return null;
 }
 
-function TimelineGraph({ board, isTeamMode }) {
+const TimelineGraph = React.memo(({ board, isTeamMode }) => {
     const colorMapRef = useRef({});
     const colorIndexRef = useRef(0);
+
+    // Filter out users without history to prevent the 'blank graph' glitch
+    const top10 = useMemo(() => board.slice(0, 10), [board]);
+    const hasHistory = top10.some(p => p.history && Array.isArray(p.history) && p.history.length > 0);
 
     if (board.length === 0) {
         return (
@@ -161,7 +165,16 @@ function TimelineGraph({ board, isTeamMode }) {
         );
     }
 
-    const top10 = board.slice(0, 10);
+    if (!hasHistory) {
+        return (
+            <div style={{ height: '350px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', color: '#2a3a2a' }}>
+                <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 2 }}>
+                    <FaChartLine style={{ fontSize: '3rem', opacity: 0.12 }} />
+                </motion.div>
+                <p style={{ margin: 0, fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'Orbitron, sans-serif', opacity: 0.5 }}>Syncing Timeline Data...</p>
+            </div>
+        );
+    }
     
     // Assign stable locked colors to players so their lines don't swap dynamically when overtaking
     top10.forEach(player => {
@@ -171,82 +184,81 @@ function TimelineGraph({ board, isTeamMode }) {
         }
     });
     
-    let chartData = [];
-    let customTop10 = top10;
-    try {
-        // 1. Rebuild sanitized chronological history per player
-        const sanitizedTimelines = {};
-        const nowIso = new Date().toISOString();
+    const chartData = useMemo(() => {
+        let internalData = [];
+        try {
+            // 1. Rebuild sanitized chronological history per player
+            const sanitizedTimelines = {};
+            const nowIso = new Date().toISOString();
 
-        top10.forEach(p => {
-            sanitizedTimelines[p.id] = [];
-            if (!p.history || !Array.isArray(p.history)) return;
-            
-            // Filter out dummy backend 'start' and 'now' to prevent temporal paradoxes!
-            const solvesOnly = p.history.filter(h => h?.id !== 'start' && h?.id !== 'now');
-            solvesOnly.sort((a,b) => new Date(a.rawTime).getTime() - new Date(b.rawTime).getTime());
-            
-            let runningTotal = 0;
-            solvesOnly.forEach(h => {
-                runningTotal += h.points || 0;
-                h.total = runningTotal;
-            });
-
-            const nowEvent = { rawTime: nowIso, id: 'now', total: runningTotal, points: 0 };
-            sanitizedTimelines[p.id] = [...solvesOnly, nowEvent];
-        });
-
-        // 2. Establish universal Start Baseline across all players (30 mins before first solve)
-        let globalStart = Date.now();
-        top10.forEach(p => {
-            const solves = sanitizedTimelines[p.id].filter(h => h.id !== 'now');
-            if (solves.length > 0) {
-                const firstT = new Date(solves[0].rawTime).getTime();
-                if (!isNaN(firstT) && firstT < globalStart) globalStart = firstT;
-            }
-        });
-        const startIso = new Date(globalStart - 30 * 60000).toISOString();
-
-        top10.forEach(p => {
-            if (sanitizedTimelines[p.id]) {
-                sanitizedTimelines[p.id].unshift({ rawTime: startIso, id: 'start', total: 0, points: 0 });
-            }
-        });
-
-        // 3. Collect all unique valid times
-        const timeSet = new Set();
-        top10.forEach(p => {
-            if (sanitizedTimelines[p.id]) {
-                sanitizedTimelines[p.id].forEach(h => { if(h.rawTime) timeSet.add(h.rawTime) });
-            }
-        });
-        const sortedTimes = Array.from(timeSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-
-        // 4. Build chart array with pure carry-forward step
-        const currentScores = {};
-        chartData = sortedTimes.map(timeStr => {
-            const point = { 
-                rawTime: timeStr, 
-                timeLabel: new Date(timeStr).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) 
-            };
-            
             top10.forEach(p => {
-                const hList = sanitizedTimelines[p.id] || [];
-                const eventAtTime = hList.find(h => h.rawTime === timeStr);
-                if (eventAtTime) {
-                    currentScores[p.id] = eventAtTime.total;
-                    point[`${p.id}_isEvent`] = true;
-                    point[`${p.id}_eventDetails`] = eventAtTime;
-                }
-                point[p.id] = currentScores[p.id] !== undefined ? currentScores[p.id] : 0; 
+                sanitizedTimelines[p.id] = [];
+                if (!p.history || !Array.isArray(p.history)) return;
+                
+                const solvesOnly = p.history.filter(h => h?.id !== 'start' && h?.id !== 'now');
+                solvesOnly.sort((a,b) => new Date(a.rawTime).getTime() - new Date(b.rawTime).getTime());
+                
+                let runningTotal = 0;
+                solvesOnly.forEach(h => {
+                    runningTotal += h.points || 0;
+                    h.total = runningTotal;
+                });
+
+                const nowEvent = { rawTime: nowIso, id: 'now', total: runningTotal, points: 0 };
+                sanitizedTimelines[p.id] = [...solvesOnly, nowEvent];
             });
-            
-            return point;
-        });
-    } catch (parseError) {
-        console.error("Timeline Rendering Fault Escaped:", parseError);
-        chartData = []; // degrade gracefully
-    }
+
+            // 2. Establish universal Start Baseline
+            let globalStart = Date.now();
+            top10.forEach(p => {
+                const solves = sanitizedTimelines[p.id]?.filter(h => h.id !== 'now') || [];
+                if (solves.length > 0) {
+                    const firstT = new Date(solves[0].rawTime).getTime();
+                    if (!isNaN(firstT) && firstT < globalStart) globalStart = firstT;
+                }
+            });
+            const startIso = new Date(globalStart - 30 * 60000).toISOString();
+
+            top10.forEach(p => {
+                if (sanitizedTimelines[p.id]) {
+                    sanitizedTimelines[p.id].unshift({ rawTime: startIso, id: 'start', total: 0, points: 0 });
+                }
+            });
+
+            const timeSet = new Set();
+            top10.forEach(p => {
+                if (sanitizedTimelines[p.id]) {
+                    sanitizedTimelines[p.id].forEach(h => { if(h.rawTime) timeSet.add(h.rawTime) });
+                }
+            });
+            const sortedTimes = Array.from(timeSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+            const currentScores = {};
+            internalData = sortedTimes.map(timeStr => {
+                const point = { 
+                    rawTime: timeStr, 
+                    timeLabel: new Date(timeStr).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) 
+                };
+                
+                top10.forEach(p => {
+                    const hList = sanitizedTimelines[p.id] || [];
+                    const eventAtTime = hList.find(h => h.rawTime === timeStr);
+                    if (eventAtTime) {
+                        currentScores[p.id] = eventAtTime.total;
+                        point[`${p.id}_isEvent`] = true;
+                        point[`${p.id}_eventDetails`] = eventAtTime;
+                    }
+                    point[p.id] = currentScores[p.id] !== undefined ? currentScores[p.id] : 0; 
+                });
+                
+                return point;
+            });
+        } catch (e) {
+            console.error("Timeline Fault:", e);
+            return [];
+        }
+        return internalData;
+    }, [top10]);
 
     const renderCustomDot = (props) => {
         const { cx, cy, payload, dataKey, lineFill } = props;
@@ -334,7 +346,7 @@ function TimelineGraph({ board, isTeamMode }) {
             </div>
         </div>
     );
-}
+});
 
 /* ─────────────────────────────────────────────────────────────────
    MAIN COMPONENT
@@ -448,8 +460,8 @@ export default function EventLeaderboard() {
         }
     }, [lastWsEvent, fetchData, fetchHistory]);
 
-    // Only show solvers
-    const activeBoard = board.filter(p => (p.flags || 0) > 0);
+    // Only show solvers - memoized to prevent graph flickering on non-update renders
+    const activeBoard = useMemo(() => board.filter(p => (p.flags || 0) > 0), [board]);
 
     return (
         <div style={{ minHeight: '100vh', fontFamily: "'Inter', sans-serif", color: '#fff', position: 'relative', overflow: 'hidden' }}>
@@ -620,7 +632,7 @@ export default function EventLeaderboard() {
                                             <p style={{ margin: 0, fontSize: '0.9rem', fontFamily: 'Orbitron, sans-serif', letterSpacing: '2px', textTransform: 'uppercase' }}>Be the first!</p>
                                         </div>
                                     ) : (
-                                        activeBoard.slice(0, 100).map((player, idx) => {
+                                        activeBoard.slice(0, 50).map((player, idx) => {
                                             const rank = idx + 1;
                                             
                                             // Dynamic "isMe" detection (works with cached data)
