@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { FaUsers, FaArrowLeft, FaBan, FaUnlock, FaExclamationTriangle, FaUserMinus } from 'react-icons/fa';
+import { FaUsers, FaArrowLeft, FaBan, FaUnlock, FaExclamationTriangle, FaUserMinus, FaSearch } from 'react-icons/fa';
 import { getCsrfToken } from '../utils/csrf';
 
 /* ── Custom Ban/Unban Confirmation Modal ──────────────────────── */
@@ -125,6 +125,7 @@ function AdminEventParticipants() {
     // Custom modal state
     const [banModal, setBanModal] = useState(null); // { user, isBanned }
     const [removeModal, setRemoveModal] = useState(null); // { user }
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         const fetchParticipants = async () => {
@@ -206,6 +207,12 @@ function AdminEventParticipants() {
     if (loading) return <div className="loading-text">Loading Participants...</div>;
     if (error) return <div className="error-text">Error: {error}</div>;
 
+    const filteredParticipants = data.participants.filter(p => 
+        p.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.team_name && p.team_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
     return (
         <>
             {/* Custom Ban Confirmation Modal */}
@@ -234,15 +241,43 @@ function AdminEventParticipants() {
             </div>
 
             <div className="admin-table-container">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
                     <h2 style={{ color: '#fff', margin: 0, fontFamily: 'Orbitron', display: 'flex', alignItems: 'center', gap: '10px', fontSize: 'clamp(0.9rem, 2.5vw, 1.3rem)' }}>
                         <FaUsers color="#00ff41" /> Enrolled Users ({data.total_participants})
                     </h2>
-                    {data.is_team_mode && (
-                        <Link to={`/administration/event/${id}/teams`} className="admin-btn-view" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(0,191,255,0.1)', border: '1px solid rgba(0,191,255,0.4)', color: '#00bfff', borderRadius: '4px', textDecoration: 'none' }}>
-                            <FaUsers /> View Teams
-                        </Link>
-                    )}
+                    
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {/* SEARCH BAR */}
+                        <div style={{ position: 'relative', minWidth: '240px' }}>
+                            <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(0,255,65,0.5)', fontSize: '0.85rem' }} />
+                            <input 
+                                type="text"
+                                placeholder="Search by username, email"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 15px 10px 38px',
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '8px',
+                                    color: '#fff',
+                                    fontSize: '0.85rem',
+                                    outline: 'none',
+                                    transition: 'all 0.3s',
+                                    fontFamily: 'Inter, sans-serif'
+                                }}
+                                onFocus={(e) => e.target.style.borderColor = 'rgba(0,255,65,0.4)'}
+                                onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                            />
+                        </div>
+
+                        {data.is_team_mode && (
+                            <Link to={`/administration/event/${id}/teams`} className="admin-btn-view" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(0,191,255,0.1)', border: '1px solid rgba(0,191,255,0.4)', color: '#00bfff', borderRadius: '4px', textDecoration: 'none' }}>
+                                <FaUsers /> View Teams
+                            </Link>
+                        )}
+                    </div>
                 </div>
                 <table className="admin-table">
                     <thead>
@@ -257,7 +292,7 @@ function AdminEventParticipants() {
                         </tr>
                     </thead>
                     <tbody>
-                        {data.participants.map((p, index) => (
+                        {filteredParticipants.map((p, index) => (
                             <tr key={p.id} style={{ opacity: p.is_banned ? 0.5 : 1 }}>
                                 <td>{index + 1}</td>
                                 <td>
@@ -300,9 +335,12 @@ function AdminEventParticipants() {
                                 </td>
                             </tr>
                         ))}
-                        {data.participants.length === 0 && (
+                        {filteredParticipants.length === 0 && (
                             <tr>
-                                <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>No participants enrolled yet.</td>
+                                <td colSpan={data.is_team_mode ? "7" : "6"} style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)' }}>
+                                    <FaSearch style={{ fontSize: '2rem', display: 'block', margin: '0 auto 15px', opacity: 0.1 }} />
+                                    No participants found matching "{searchTerm}"
+                                </td>
                             </tr>
                         )}
                     </tbody>

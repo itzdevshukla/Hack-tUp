@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
-import { FaUsers, FaArrowLeft, FaEye, FaShieldAlt, FaTrash, FaBan, FaUnlock } from 'react-icons/fa';
+import { FaUsers, FaArrowLeft, FaEye, FaShieldAlt, FaTrash, FaBan, FaUnlock, FaSearch } from 'react-icons/fa';
 import CustomAlert from './CustomAlert';
 import { getCsrfToken } from '../utils/csrf';
 
@@ -15,6 +15,7 @@ function AdminEventTeams() {
     const [data, setData] = useState({ event_name: '', teams: [], total_teams: 0 });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Actions / Modal State
     const [modalTeam, setModalTeam] = useState(null);
@@ -93,6 +94,12 @@ function AdminEventTeams() {
     if (loading) return <div className="loading-text">Loading Teams...</div>;
     if (error) return <div className="error-text">Error: {error}</div>;
 
+    const filteredTeams = data.teams.filter(t => 
+        t.team_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        t.captain.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (t.invite_code && t.invite_code.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
     return (
         <>
             <CustomAlert isOpen={alertOpen} {...alertConfig} />
@@ -106,13 +113,41 @@ function AdminEventTeams() {
             </div>
 
             <div className="admin-table-container">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
                     <h2 style={{ color: '#fff', margin: 0, fontFamily: 'Orbitron', display: 'flex', alignItems: 'center', gap: '10px', fontSize: 'clamp(0.9rem, 2.5vw, 1.3rem)' }}>
                         <FaShieldAlt color="#00ff41" /> Registered Teams ({data.total_teams})
                     </h2>
-                    <Link to={`/administration/event/${id}/leaderboard`} className="admin-btn-view" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(255,170,0,0.1)', border: '1px solid rgba(255,170,0,0.4)', color: '#ffaa00', borderRadius: '4px', textDecoration: 'none' }}>
-                        <FaUsers /> Team Leaderboard
-                    </Link>
+                    
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {/* SEARCH BAR */}
+                        <div style={{ position: 'relative', minWidth: '240px' }}>
+                            <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(0,255,65,0.5)', fontSize: '0.85rem' }} />
+                            <input 
+                                type="text"
+                                placeholder="Search by team name or captain..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 15px 10px 38px',
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '8px',
+                                    color: '#fff',
+                                    fontSize: '0.85rem',
+                                    outline: 'none',
+                                    transition: 'all 0.3s',
+                                    fontFamily: 'Inter, sans-serif'
+                                }}
+                                onFocus={(e) => e.target.style.borderColor = 'rgba(0,255,65,0.4)'}
+                                onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                            />
+                        </div>
+
+                        <Link to={`/administration/event/${id}/leaderboard`} className="admin-btn-view" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(255,170,0,0.1)', border: '1px solid rgba(255,170,0,0.4)', color: '#ffaa00', borderRadius: '4px', textDecoration: 'none' }}>
+                            <FaUsers /> Team Leaderboard
+                        </Link>
+                    </div>
                 </div>
                 <table className="admin-table">
                     <thead>
@@ -127,7 +162,7 @@ function AdminEventTeams() {
                         </tr>
                     </thead>
                     <tbody>
-                        {data.teams.map((t, index) => (
+                        {filteredTeams.map((t, index) => (
                             <tr key={t.team_id} style={{ opacity: t.is_banned ? 0.5 : 1 }}>
                                 <td>{index + 1}</td>
                                 <td>
@@ -161,9 +196,12 @@ function AdminEventTeams() {
                                 </td>
                             </tr>
                         ))}
-                        {data.teams.length === 0 && (
+                        {filteredTeams.length === 0 && (
                             <tr>
-                                <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No teams registered yet.</td>
+                                <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)' }}>
+                                    <FaSearch style={{ fontSize: '2rem', display: 'block', margin: '0 auto 15px', opacity: 0.1 }} />
+                                    No teams found matching "{searchTerm}"
+                                </td>
                             </tr>
                         )}
                     </tbody>

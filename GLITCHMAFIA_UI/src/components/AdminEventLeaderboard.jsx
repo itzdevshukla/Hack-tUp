@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { FaTrophy, FaArrowLeft, FaEye, FaTimes, FaCheck, FaUsers, FaCrown, FaUser, FaShieldAlt, FaBan } from 'react-icons/fa';
+import { FaTrophy, FaArrowLeft, FaEye, FaTimes, FaCheck, FaUsers, FaCrown, FaUser, FaShieldAlt, FaBan, FaSearch } from 'react-icons/fa';
 import CustomAlert from './CustomAlert';
 import { getCsrfToken } from '../utils/csrf';
 
@@ -38,6 +38,7 @@ function TeamLeaderboard({ eventId, eventName, teams, refresh }) {
     const [subsLoading, setSubsLoading] = useState(false);
     const [subsFilter, setSubsFilter] = useState('all');
     const [togglingBan, setTogglingBan] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertConfig, setAlertConfig] = useState({});
@@ -103,6 +104,11 @@ function TeamLeaderboard({ eventId, eventName, teams, refresh }) {
         setAlertOpen(true);
     };
 
+    const filteredTeams = teams.filter(t => 
+        t.team_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        t.captain.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     const filteredSubs = submissions.filter(s => {
         if (subsFilter === 'correct') return s.is_correct;
         if (subsFilter === 'wrong') return !s.is_correct;
@@ -113,12 +119,36 @@ function TeamLeaderboard({ eventId, eventName, teams, refresh }) {
         <>
             <CustomAlert isOpen={alertOpen} {...alertConfig} />
             <div className="admin-table-container">
-                <h2 style={{ color: '#fff', marginBottom: 20, fontFamily: 'Orbitron', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 'clamp(0.95rem, 2.5vw, 1.4rem)' }}>
-                    <FaTrophy color="#ffaa00" /> Team Standings
-                    <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#555', fontFamily: 'monospace' }}>
-                        {teams.length} team{teams.length !== 1 ? 's' : ''}
-                    </span>
-                </h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+                    <h2 style={{ color: '#fff', margin: 0, fontFamily: 'Orbitron', display: 'flex', alignItems: 'center', gap: 10, fontSize: 'clamp(0.95rem, 2.5vw, 1.4rem)' }}>
+                        <FaTrophy color="#ffaa00" /> Team Standings
+                    </h2>
+                    
+                    {/* SEARCH BAR */}
+                    <div style={{ position: 'relative', minWidth: '240px' }}>
+                        <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(0,255,65,0.5)', fontSize: '0.85rem' }} />
+                        <input 
+                            type="text"
+                            placeholder="Search team or captain..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '10px 15px 10px 38px',
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '8px',
+                                color: '#fff',
+                                fontSize: '0.85rem',
+                                outline: 'none',
+                                transition: 'all 0.3s',
+                                fontFamily: 'Inter, sans-serif'
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = 'rgba(0,255,65,0.4)'}
+                            onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                        />
+                    </div>
+                </div>
                 <table className="admin-table">
                     <thead>
                         <tr>
@@ -133,7 +163,7 @@ function TeamLeaderboard({ eventId, eventName, teams, refresh }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {teams.map(t => (
+                        {filteredTeams.map(t => (
                             <tr key={t.team_id}>
                                 <td><RankBadge rank={t.rank} /></td>
                                 <td>
@@ -164,9 +194,12 @@ function TeamLeaderboard({ eventId, eventName, teams, refresh }) {
                                 </td>
                             </tr>
                         ))}
-                        {teams.length === 0 && (
+                        {filteredTeams.length === 0 && (
                             <tr>
-                                <td colSpan="8" style={{ textAlign: 'center', padding: 20 }}>No teams yet.</td>
+                                <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)' }}>
+                                    <FaSearch style={{ fontSize: '2rem', display: 'block', margin: '0 auto 15px', opacity: 0.1 }} />
+                                    No teams found matching "{searchTerm}"
+                                </td>
                             </tr>
                         )}
                     </tbody>
@@ -415,6 +448,11 @@ function IndividualLeaderboard({ eventId, users }) {
     const [selectedUser, setSelectedUser] = useState(null);
     const [userSubmissions, setUserSubmissions] = useState([]);
     const [modalLoading, setModalLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredUsers = users.filter(u => 
+        u.username.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     const openSubmissionsModal = async (userId, username) => {
         setSelectedUser(username);
@@ -431,9 +469,36 @@ function IndividualLeaderboard({ eventId, users }) {
     return (
         <>
             <div className="admin-table-container">
-                <h2 style={{ color: '#fff', marginBottom: 20, fontFamily: 'Orbitron', display: 'flex', alignItems: 'center', gap: 10, fontSize: 'clamp(0.95rem, 2.5vw, 1.4rem)' }}>
-                    <FaTrophy color="#ffaa00" /> Current Standings
-                </h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+                    <h2 style={{ color: '#fff', margin: 0, fontFamily: 'Orbitron', display: 'flex', alignItems: 'center', gap: 10, fontSize: 'clamp(0.95rem, 2.5vw, 1.4rem)' }}>
+                        <FaTrophy color="#ffaa00" /> Current Standings
+                    </h2>
+
+                    {/* SEARCH BAR */}
+                    <div style={{ position: 'relative', minWidth: '240px' }}>
+                        <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(0,255,65,0.5)', fontSize: '0.85rem' }} />
+                        <input 
+                            type="text"
+                            placeholder="Search username..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '10px 15px 10px 38px',
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '8px',
+                                color: '#fff',
+                                fontSize: '0.85rem',
+                                outline: 'none',
+                                transition: 'all 0.3s',
+                                fontFamily: 'Inter, sans-serif'
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = 'rgba(0,255,65,0.4)'}
+                            onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                        />
+                    </div>
+                </div>
                 <table className="admin-table">
                     <thead>
                         <tr>
@@ -446,7 +511,7 @@ function IndividualLeaderboard({ eventId, users }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {users.map(u => (
+                        {filteredUsers.map(u => (
                             <tr key={u.user_id}>
                                 <td><RankBadge rank={u.rank} /></td>
                                 <td>{u.username}</td>
@@ -460,8 +525,13 @@ function IndividualLeaderboard({ eventId, users }) {
                                 </td>
                             </tr>
                         ))}
-                        {users.length === 0 && (
-                            <tr><td colSpan="6" style={{ textAlign: 'center', padding: 20 }}>No solves yet. The leaderboard is empty.</td></tr>
+                        {filteredUsers.length === 0 && (
+                            <tr>
+                                <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)' }}>
+                                    <FaSearch style={{ fontSize: '2rem', display: 'block', margin: '0 auto 15px', opacity: 0.1 }} />
+                                    No players found matching "{searchTerm}"
+                                </td>
+                            </tr>
                         )}
                     </tbody>
                 </table>
