@@ -382,17 +382,33 @@ def event_leaderboard_api(request, event_id):
     if payload is None:
         return JsonResponse({'error': 'Leaderboard data unavailable'}, status=503)
 
-    # ── Annotate the current user's own entry ─────────────────────────────────
+    # ── Scalability: Slice to Top 100 & Find My Standing ───────────────────────
+    full_board = payload.get('leaderboard', [])
+    is_team_mode = payload.get('is_team_mode', False)
     my_encoded_id = encode_id(request.user.id)
-    current_stats = None
+    my_standing = None
+    
+    # Pre-calculate username for membership check if in team mode
+    username = request.user.username
 
-    for entry in payload.get('leaderboard', []):
-        if entry.get('id') == my_encoded_id:
+    for entry in full_board:
+        is_me = False
+        if is_team_mode:
+            is_me = (username in entry.get('members', []))
+        else:
+            is_me = (entry.get('id') == my_encoded_id)
+            
+        if is_me:
             entry['is_me'] = True
-            current_stats = entry
+            my_standing = entry
         else:
             entry['is_me'] = False
 
+    # Return only top 100 to the client, but include personal standing separately
+    payload['leaderboard'] = full_board[:100]
+    payload['my_standing'] = my_standing
+
+    current_stats = my_standing
     if not current_stats:
         # User is registered but has zero solves — build a placeholder.
         if event.is_team_mode:

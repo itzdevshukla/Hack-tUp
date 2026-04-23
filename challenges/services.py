@@ -234,9 +234,6 @@ def _build_team_payload(event) -> dict:
     # Sort: points DESC, last_solve_time ASC (earlier = better tie-break)
     rows.sort(key=lambda t: (-t["points"], t["last_solve_time"] or ""))
 
-    # Scalability Fix: Limit to Top 100 to prevent network saturation and UI lag
-    rows = rows[:100]
-
     for idx, row in enumerate(rows):
         row["rank"] = idx + 1
         row["totalFlags"] = total_challenges
@@ -321,9 +318,6 @@ def _build_individual_payload(event) -> dict:
         })
 
     rows.sort(key=lambda u: (-u["points"], u["last_solve_time"] or ""))
-
-    # Scalability Fix: Limit to Top 100 to prevent network saturation and UI lag
-    rows = rows[:100]
 
     for idx, row in enumerate(rows):
         row["rank"] = idx + 1

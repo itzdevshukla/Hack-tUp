@@ -347,6 +347,8 @@ export default function EventLeaderboard() {
     const [isTeamMode, setIsTeamMode] = useState(false);
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState(null);
+    const [myStanding, setMyStanding] = useState(null);
+    const [isMultiTab, setIsMultiTab] = useState(false);
 
     const debounceRef = useRef(null);
     // useOutletContext can be null when opened in a new tab (presentation mode)
@@ -381,6 +383,7 @@ export default function EventLeaderboard() {
                 setBoard(lbWithHistory);
                 setEventName(json.event || '');
                 setIsTeamMode(json.is_team_mode || false);
+                setMyStanding(json.my_standing || null);
                 setLastUpdated(new Date());
             }
         } catch { }
@@ -388,9 +391,26 @@ export default function EventLeaderboard() {
     }, [id, fetchHistory]);
 
     useEffect(() => {
+        // --- SINGLE TAB DETECTION ---
+        const channel = new BroadcastChannel(`lb_sync_${id}`);
+        
+        const handlePing = (e) => {
+            if (e.data === 'ping') {
+                channel.postMessage('pong');
+            } else if (e.data === 'pong') {
+                setIsMultiTab(true);
+            }
+        };
+
+        channel.onmessage = handlePing;
+        channel.postMessage('ping');
+
         fetchData();
-        return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-    }, [fetchData]);
+        return () => { 
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+            channel.close();
+        };
+    }, [fetchData, id]);
 
     useEffect(() => {
         if (!lastWsEvent || lastWsEvent.type !== 'leaderboard_update') return;
@@ -405,6 +425,7 @@ export default function EventLeaderboard() {
                 setBoard(lbWithHistory);
                 if (d.event) setEventName(d.event);
                 if (d.is_team_mode !== undefined) setIsTeamMode(d.is_team_mode);
+                if (d.my_standing) setMyStanding(d.my_standing);
                 setLastUpdated(new Date());
             } else {
                 // Fallback to fetch if not present
@@ -412,6 +433,7 @@ export default function EventLeaderboard() {
                     setBoard(lbWithHistory);
                     if (d.event) setEventName(d.event);
                     if (d.is_team_mode !== undefined) setIsTeamMode(d.is_team_mode);
+                    if (d.my_standing) setMyStanding(d.my_standing);
                     setLastUpdated(new Date());
                 });
             }
@@ -426,43 +448,122 @@ export default function EventLeaderboard() {
 
     return (
         <div style={{ minHeight: '100vh', fontFamily: "'Inter', sans-serif", color: '#fff', position: 'relative', overflow: 'hidden' }}>
-            {/* Background is now provided by EventArenaLayout */}
+            {/* MULTI-TAB WARNING OVERLAY */}
+            <AnimatePresence>
+                {isMultiTab && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            zIndex: 9999,
+                            background: 'rgba(5, 0, 0, 0.98)',
+                            backdropFilter: 'blur(20px)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            textAlign: 'center',
+                            padding: '2rem'
+                        }}
+                    >
+                        <motion.div
+                            animate={{ scale: [1, 1.05, 1], rotate: [0, 1, -1, 0] }}
+                            transition={{ repeat: Infinity, duration: 2 }}
+                            style={{ 
+                                width: '100px', 
+                                height: '100px', 
+                                borderRadius: '50%', 
+                                background: 'rgba(255, 76, 76, 0.1)', 
+                                border: '2px solid #ff4c4c',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginBottom: '2rem',
+                                boxShadow: '0 0 30px rgba(255, 76, 76, 0.4)'
+                            }}
+                        >
+                            <FaExclamationTriangle style={{ color: '#ff4c4c', fontSize: '3rem' }} />
+                        </motion.div>
+                        <h2 style={{ fontFamily: 'Orbitron, sans-serif', color: '#ff4c4c', letterSpacing: '4px', marginBottom: '1rem', fontSize: '1.8rem', textTransform: 'uppercase' }}>
+                            Security Protocol Violation
+                        </h2>
+                        <p style={{ color: 'rgba(255,255,255,0.6)', maxWidth: '500px', lineHeight: '1.6', fontSize: '1rem' }}>
+                            Multiple active sessions detected for this leaderboard. To ensure system stability and real-time synchronization, only one instance is permitted per user.
+                        </p>
+                        <div style={{ marginTop: '2.5rem', color: '#ff4c4c', fontWeight: 800, fontSize: '0.8rem', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                            Please close this tab or the other active instance.
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div style={{ position: 'relative', zIndex: 2, padding: 'clamp(1.2rem, 3vw, 2.5rem)', maxWidth: '1400px', margin: '0 auto', paddingBottom: '4rem' }}>
 
                 {/* ──────── HEADER ──────── */}
                 <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-                    style={{ marginBottom: 'clamp(1.5rem, 3vw, 2.5rem)' }}>
+                    style={{ 
+                        marginBottom: 'clamp(1.5rem, 3vw, 2.5rem)',
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-end',
+                        flexWrap: 'wrap',
+                        gap: '20px'
+                    }}>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                            {[0, 1, 2].map(i => (
-                                <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#9ACD32', opacity: 0.4 + i * 0.2 }} />
-                            ))}
+                    <div style={{ flex: '1 1 300px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                {[0, 1, 2].map(i => (
+                                    <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#9ACD32', opacity: 0.4 + i * 0.2 }} />
+                                ))}
+                            </div>
+                            <span style={{ fontSize: '0.6rem', color: 'rgba(154,205,50,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontFamily: 'Orbitron, sans-serif' }}>
+                                Season Rankings &nbsp;·&nbsp; Live
+                            </span>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#9ACD32', display: 'inline-block', animation: 'lb-pulse 2s infinite', marginLeft: '2px' }} />
                         </div>
-                        <span style={{ fontSize: '0.6rem', color: 'rgba(154,205,50,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontFamily: 'Orbitron, sans-serif' }}>
-                            Season Rankings &nbsp;·&nbsp; Live
-                        </span>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#9ACD32', display: 'inline-block', animation: 'lb-pulse 2s infinite', marginLeft: '2px' }} />
+
+                        <h1 style={{ margin: 0, fontSize: 'clamp(2rem, 5vw, 3.2rem)', fontWeight: 900, color: '#fff', letterSpacing: '-1px', lineHeight: 1.05 }}>
+                            Leaderboard
+                            <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'rgba(255,255,255,0.4)', marginTop: '4px', fontFamily: 'Orbitron, sans-serif', letterSpacing: '2px' }}>
+                                {eventName || 'Active Event'}
+                            </span>
+                        </h1>
                     </div>
 
-                    <h1 style={{ margin: 0, fontSize: 'clamp(2rem, 5vw, 3.2rem)', fontWeight: 900, color: '#fff', letterSpacing: '-1px', lineHeight: 1.05 }}>
-                        Leaderboard
-                    </h1>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '6px', flexWrap: 'wrap' }}>
-                        {eventName && (
-                            <span style={{ fontSize: '0.85rem', color: '#9ACD32', fontWeight: 700, background: 'rgba(154,205,50,0.08)', border: '1px solid rgba(154,205,50,0.2)', padding: '4px 12px', borderRadius: '20px' }}>
-                                {eventName}
-                            </span>
-                        )}
-                        {lastUpdated && (
-                            <span style={{ fontSize: '0.75rem', color: '#444', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <FaClock style={{ fontSize: '0.65rem' }} />
-                                Updated {lastUpdated.toLocaleTimeString()}
-                            </span>
-                        )}
-                    </div>
+                    {/* PERSONAL STANDING CARD */}
+                    {myStanding && (
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            style={{
+                                background: 'rgba(154,205,50,0.08)',
+                                border: '1px solid rgba(154,205,50,0.2)',
+                                borderRadius: '16px',
+                                padding: '12px 24px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '20px',
+                                backdropFilter: 'blur(10px)',
+                                boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                                flex: '0 1 auto'
+                            }}
+                        >
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontSize: '0.6rem', color: 'rgba(154,205,50,0.6)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px', fontFamily: 'Orbitron, sans-serif' }}>Your Rank</div>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#9ACD32', fontFamily: 'Orbitron, sans-serif' }}>#{myStanding.rank}</div>
+                            </div>
+                            <div style={{ width: '1px', height: '30px', background: 'rgba(154,205,50,0.2)' }} />
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px', fontFamily: 'Orbitron, sans-serif' }}>Your Score</div>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff', fontFamily: 'Orbitron, sans-serif' }}>{myStanding.points}</div>
+                            </div>
+                        </motion.div>
+                    )}
                 </motion.div>
 
                 {/* ──────── CONTENT ──────── */}
