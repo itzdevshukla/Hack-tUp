@@ -514,7 +514,7 @@ export default function EventLeaderboard() {
                                             <p style={{ margin: 0, fontSize: '0.9rem', fontFamily: 'Orbitron, sans-serif', letterSpacing: '2px', textTransform: 'uppercase' }}>Be the first!</p>
                                         </div>
                                     ) : (
-                                        activeBoard.map((player, idx) => {
+                                        activeBoard.slice(0, 100).map((player, idx) => {
                                             const rank = idx + 1;
                                             
                                             // Dynamic "isMe" detection (works with cached data)
@@ -525,15 +525,16 @@ export default function EventLeaderboard() {
                                             const name = isTeamMode ? player.name : player.username;
                                             const top1 = rank === 1;
                                             const top3 = rank <= 3;
+                                            const isTop10 = rank <= 10;
                                             const m_col = CHART_COLORS[(rank-1) % CHART_COLORS.length];
                                             const m = rank <= 3 ? { col: m_col, shadow: rank===1?'57,255,20':rank===2?'96,165,250':'167,139,250', icon: rank===1?<FaCrown/>:<FaMedal/> } : null;
 
                                             return (
                                                 <motion.div
                                                     key={player.id || name || idx}
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
-                                                    transition={{ delay: Math.min(idx * 0.02, 0.4) }}
+                                                    initial={isTop10 ? { opacity: 0, x: -10 } : { opacity: 1 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={isTop10 ? { delay: idx * 0.05 } : { duration: 0 }}
                                                     style={{
                                                         display: 'grid',
                                                         gridTemplateColumns: '60px 1fr 70px 90px',
