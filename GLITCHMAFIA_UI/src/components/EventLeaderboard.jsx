@@ -413,7 +413,12 @@ export default function EventLeaderboard() {
     }, [fetchData, id]);
 
     useEffect(() => {
-        if (!lastWsEvent || lastWsEvent.type !== 'leaderboard_update') return;
+        if (!lastWsEvent) return;
+
+        // CRITICAL FIX: Only react to leaderboard_update. 
+        // Ignore new_submission, especially wrong ones, to prevent blanking or unnecessary flickering.
+        if (lastWsEvent.type !== 'leaderboard_update') return;
+
         const d = lastWsEvent.data;
         if (d?.leaderboard?.length > 0) {
             // Smooth Update: If WS payload already contains top_history, use it directly.
