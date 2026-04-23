@@ -13,12 +13,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RemoveField(
             model_name='challenge',
-            name='category',
-        ),
-        migrations.RenameField(
-            model_name='challenge',
-            old_name='category_new',
-            new_name='category',
+            name='category_new',
         ),
         migrations.AlterField(
             model_name='challenge',
