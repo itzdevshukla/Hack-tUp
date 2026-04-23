@@ -352,284 +352,139 @@ def submit_flag_api(request, challenge_id):
 @login_required
 @require_GET
 def event_leaderboard_api(request, event_id):
+    """
+    Fast leaderboard endpoint — served from Redis cache.
+    
+    Cache is populated by challenges/services.py on flag/hint events.
+    On a cold cache (first request after server start) we compute once
+    and then all subsequent reads are sub-millisecond Redis hits.
+    
+    History (score timeline) is NOT included here; use the /history/ endpoint.
+    """
+    from challenges.services import get_leaderboard_data, update_leaderboard_cache
+
     event = get_object_or_404(Event, id=event_id)
-    User = get_user_model()
 
-    # ── TEAM MODE LEADERBOARD ────────────────────────────────────────
-    if event.is_team_mode:
-        from teams.models import Team, TeamChallenge, TeamMember
+    # Only registered, non-banned users may view the leaderboard.
+    access = EventAccess.objects.filter(user=request.user, event=event).first()
+    is_privileged = is_admin(request, event_id=event.id)
+    if not is_privileged:
+        if not access or not access.is_registered or access.is_banned:
+            return JsonResponse({'error': 'Access denied'}, status=403)
 
-        teams = Team.objects.filter(event=event).prefetch_related(
-            'members__user', 'solves__challenge'
-        )
+    # ── Try Redis first ───────────────────────────────────────────────────────
+    payload = get_leaderboard_data(event.id)
 
-        event_challenges = Challenge.objects.filter(event=event)
-        event_total_challenges = event_challenges.count()
-        event_total_points = event_challenges.aggregate(total=models.Sum('points'))['total'] or 0
+    # Cold cache: compute now and warm it.
+    if payload is None:
+        payload = update_leaderboard_cache(event.id)
 
-        # Build event start datetime
-        if event.start_date and event.start_time:
-            start_dt = datetime.combine(event.start_date, event.start_time)
-            if timezone.is_naive(start_dt):
-                start_dt = timezone.make_aware(start_dt)
-            event_start_iso = start_dt.isoformat()
+    if payload is None:
+        return JsonResponse({'error': 'Leaderboard data unavailable'}, status=503)
+
+    # ── Annotate the current user's own entry ─────────────────────────────────
+    my_encoded_id = encode_id(request.user.id)
+    current_stats = None
+
+    for entry in payload.get('leaderboard', []):
+        if entry.get('id') == my_encoded_id:
+            entry['is_me'] = True
+            current_stats = entry
         else:
-            start_dt = timezone.now() - timezone.timedelta(hours=1)
-            event_start_iso = start_dt.isoformat()
+            entry['is_me'] = False
 
-        team_list = []
-        user_team_id = None
-
-        # Find the current user's team
-        user_membership = TeamMember.objects.filter(user=request.user, team__event=event).first()
-        if user_membership:
-            user_team_id = user_membership.team_id
-
-        for team in teams:
-            timeline_events = []
-            
-            for solve in team.solves.all():
-                timeline_events.append({
-                    'type': 'solve',
-                    'name': solve.challenge.title,
-                    'delta': solve.challenge.points,
-                    'timestamp': solve.solved_at,
-                    'id': encode_id(solve.id)
-                })
-                
-            # Get Team hints
-            team_hints = team.hints_unlocked.select_related('hint', 'hint__challenge')
-            for th in team_hints:
-                timeline_events.append({
-                    'type': 'hint',
-                    'name': f"Hint: {th.hint.challenge.title}",
-                    'delta': -th.hint.cost,
-                    'timestamp': th.unlocked_at,
-                    'id': f"hint-{th.id}"
-                })
-                
-            timeline_events.sort(key=lambda x: x['timestamp'])
-            
-            current_score = 0
-            current_flags = 0
-            last_solve_time = None
-            
-            history = [{
-                'flagName': 'Event Start', 'points': 0, 'total': 0,
-                'timestamp': 'Start', 'rawTime': event_start_iso, 'id': 'start'
-            }]
-
-            for evt in timeline_events:
-                current_score += evt['delta']
-                    
-                if evt['type'] == 'solve':
-                    current_flags += 1
-                    last_solve_time = evt['timestamp']
-                    
-                history.append({
-                    'flagName': evt['name'],
-                    'points': evt['delta'],
-                    'total': current_score,
-                    'timestamp': evt['timestamp'].strftime('%H:%M'),
-                    'rawTime': evt['timestamp'].isoformat(),
-                    'id': evt['id']
-                })
-
-            history.append({
-                'flagName': 'Current', 'points': 0, 'total': current_score,
-                'timestamp': 'Now', 'rawTime': timezone.now().isoformat(), 'id': 'now'
-            })
-
-            team_list.append({
-                'id': encode_id(team.id),
-                'name': team.name,
-                'captain': team.captain.username,
-                'members': [m.user.username for m in team.members.all()],
-                'member_count': team.members.count(),
-                'points': current_score,
-                'flags': current_flags,
-                'last_solve_time': last_solve_time,
-                'history': history,
-                'avatar': f'https://ui-avatars.com/api/?name={team.name}&background=random&color=fff',
-                'is_my_team': team.id == user_team_id,
-            })
-
-        # Sort: points desc, last solve asc
-        team_list.sort(key=lambda t: (
-            -t['points'],
-            t['last_solve_time'] if t['last_solve_time'] else timezone.now()
-        ))
-
-        current_team_stats = None
-        for idx, team in enumerate(team_list):
-            team['rank'] = idx + 1
-            team['totalFlags'] = event_total_challenges
-            team['progress'] = (team['flags'] / event_total_challenges * 100) if event_total_challenges else 0
-            team['color'] = f"hsl({(idx * 137.5) % 360}, 85%, 60%)"
-            if team['is_my_team']:
-                current_team_stats = team
-
-        if not current_team_stats and user_team_id is None:
-            current_team_stats = {
-                'name': 'No Team',
+    if not current_stats:
+        # User is registered but has zero solves — build a placeholder.
+        if event.is_team_mode:
+            current_stats = {'name': 'No Team', 'rank': '-', 'points': 0, 'flags': 0,
+                             'totalFlags': payload.get('event_total_challenges', 0)}
+        else:
+            current_stats = {
+                'id': my_encoded_id,
+                'username': request.user.username,
                 'rank': '-', 'points': 0, 'flags': 0,
-                'totalFlags': event_total_challenges,
+                'totalFlags': payload.get('event_total_challenges', 0),
+                'avatar': f'https://ui-avatars.com/api/?name={request.user.username}&background=random&color=fff',
             }
 
-        return JsonResponse({
-            'is_team_mode': True,
-            'leaderboard': team_list,
-            'event': event.event_name,
-            'event_total_points': event_total_points,
-            'event_total_challenges': event_total_challenges,
-            'current_team_stats': current_team_stats,
-        })
+    response_key = 'current_team_stats' if event.is_team_mode else 'current_user_stats'
+    return JsonResponse({**payload, response_key: current_stats})
 
-    # ── INDIVIDUAL MODE LEADERBOARD (unchanged) ──────────────────────
-    submissions = UserChallenge.objects.filter(
-        challenge__event=event,
-        is_correct=True
-    ).select_related('user', 'challenge').order_by('submitted_at')
 
-    unlocked_hints = UserHint.objects.filter(
-        hint__challenge__event=event
-    ).select_related('user', 'hint')
-    
-    registered_users = EventAccess.objects.filter(event=event).select_related('user')
+@login_required
+@require_GET
+def event_leaderboard_history_api(request, event_id):
+    """
+    On-demand history / timeline endpoint.
 
-    leaderboard_data = {}
-    
-    def get_or_init_user(uid, username):
-        if uid not in leaderboard_data:
-            leaderboard_data[uid] = {
-                'id': encode_id(uid),
-                'username': username,
-                'team': 'Hack!t',
-                'points': 0,
-                'flags': 0,
-                'last_solve_time': None,
-                'history': [],
-                'timeline_events': [],
-                'avatar': f'https://ui-avatars.com/api/?name={username}&background=random&color=fff'
-            }
-        return leaderboard_data[uid]
+    Returns the score timeline for:
+      • the requesting user/team          (default)
+      • a specific entity via ?id=<encoded_id>  (privileged admin only)
+      • top-N entities via ?top=N             (admin only)
 
-    for access in registered_users:
-        get_or_init_user(access.user.id, access.user.username)
+    This is intentionally separate from the main leaderboard so the hot
+    read-path stays fast and history is only fetched when the UI needs it.
+    """
+    from challenges.services import build_entity_history
+    from ctf.utils import decode_id
 
-    processed_solves = set()
-    for sub in submissions:
-        uid = sub.user.id
-        if (uid, sub.challenge.id) in processed_solves:
-            continue
-        processed_solves.add((uid, sub.challenge.id))
+    event = get_object_or_404(Event, id=event_id)
+    is_team_mode = event.is_team_mode
 
-        user_data = get_or_init_user(uid, sub.user.username)
-        user_data['timeline_events'].append({
-            'type': 'solve',
-            'name': sub.challenge.title,
-            'delta': sub.challenge.points,
-            'timestamp': sub.submitted_at,
-            'id': encode_id(sub.id)
-        })
+    access = EventAccess.objects.filter(user=request.user, event=event).first()
+    is_privileged = is_admin(request, event_id=event.id)
+    if not is_privileged:
+        if not access or not access.is_registered or access.is_banned:
+            return JsonResponse({'error': 'Access denied'}, status=403)
 
-    for uh in unlocked_hints:
-        uid = uh.user.id
-        user_data = get_or_init_user(uid, uh.user.username)
-        user_data['timeline_events'].append({
-            'type': 'hint',
-            'name': f"Hint: {uh.hint.challenge.title}",
-            'delta': -uh.hint.cost,
-            'timestamp': uh.unlocked_at,
-            'id': f"hint-{uh.id}"
-        })
+    # ── Resolve which entity to return history for ────────────────────────────
+    entity_id_param = request.GET.get('id')
+    top_n = request.GET.get('top')
 
-    if event.start_date and event.start_time:
-        start_dt = datetime.combine(event.start_date, event.start_time)
-        if timezone.is_naive(start_dt):
-            start_dt = timezone.make_aware(start_dt)
-        event_start_iso = start_dt.isoformat()
+    if entity_id_param:
+        # Decode provided entity id
+        entity_id = decode_id(entity_id_param)
+        if entity_id is None:
+            return JsonResponse({'error': 'Invalid id'}, status=400)
+        history = build_entity_history(event, entity_id, is_team=is_team_mode)
+        return JsonResponse({'history': history, 'entity_id': entity_id_param})
+
+    if top_n:
+        # Return histories for top N entities — open to all registered participants for graph rendering.
+        # Cap at 10 for non-admins to avoid abuse.
+        try:
+            top_n = int(top_n)
+        except ValueError:
+            return JsonResponse({'error': 'top must be an integer'}, status=400)
+
+        if not is_privileged:
+            top_n = min(top_n, 10)
+
+        from challenges.services import get_leaderboard_data
+        lb = get_leaderboard_data(event.id) or {}
+        entries = lb.get('leaderboard', [])[:top_n]
+        results = []
+        for entry in entries:
+            eid = decode_id(entry['id'])
+            if eid is None:
+                continue
+            h = build_entity_history(event, eid, is_team=is_team_mode)
+            results.append({'id': entry['id'], 'name': entry.get('name') or entry.get('username'), 'history': h})
+        return JsonResponse({'histories': results})
+
+    # Default: current user's own history
+    if is_team_mode:
+        from teams.models import TeamMember
+        membership = TeamMember.objects.filter(user=request.user, team__event=event).first()
+        if not membership:
+            return JsonResponse({'history': [], 'message': 'Not in a team'})
+        entity_id = membership.team_id
     else:
-        start_dt = timezone.now() - timezone.timedelta(hours=1)
-        event_start_iso = start_dt.isoformat()
+        entity_id = request.user.id
 
-    for uid, data in leaderboard_data.items():
-        data['timeline_events'].sort(key=lambda x: x['timestamp'])
-        
-        current_score = 0
-        current_flags = 0
-        last_solve = None
+    history = build_entity_history(event, entity_id, is_team=is_team_mode)
+    return JsonResponse({'history': history})
 
-        data['history'].append({
-            'flagName': 'Event Start', 'points': 0, 'total': 0,
-            'timestamp': 'Start', 'rawTime': event_start_iso, 'id': 'start'
-        })
-
-        for evt in data['timeline_events']:
-            current_score += evt['delta']
-            if evt['type'] == 'solve':
-                current_flags += 1
-                last_solve = evt['timestamp']
-            data['history'].append({
-                'flagName': evt['name'],
-                'points': evt['delta'],
-                'total': current_score,
-                'timestamp': evt['timestamp'].strftime('%H:%M'),
-                'rawTime': evt['timestamp'].isoformat(),
-                'id': evt['id']
-            })
-
-        data['points'] = current_score
-        data['flags'] = current_flags
-        data['last_solve_time'] = last_solve
-
-        data['history'].append({
-            'flagName': 'Current', 'points': 0, 'total': current_score,
-            'timestamp': 'Now', 'rawTime': timezone.now().isoformat(), 'id': 'now'
-        })
-        del data['timeline_events']
-
-    sorted_users = sorted(
-        leaderboard_data.values(),
-        key=lambda x: (-x['points'], x['last_solve_time'] if x['last_solve_time'] else timezone.now())
-    )
-
-    current_user_stats = None
-    
-    for index, user in enumerate(sorted_users):
-        user['rank'] = index + 1
-        user['maxPoints'] = 15000
-        user['totalFlags'] = Challenge.objects.filter(event=event).count()
-        user['progress'] = (user['flags'] / user['totalFlags']) * 100 if user['totalFlags'] > 0 else 0
-        user['color'] = f"hsl({(index * 137.5) % 360}, 85%, 60%)"
-        
-        if user['id'] == encode_id(request.user.id):
-            user['is_me'] = True
-            current_user_stats = user
-        else:
-            user['is_me'] = False
-
-    if not current_user_stats:
-        current_user_stats = {
-            'id': encode_id(request.user.id),
-            'username': request.user.username,
-            'rank': '-', 'points': 0, 'flags': 0,
-            'totalFlags': Challenge.objects.filter(event=event).count(),
-            'avatar': f'https://ui-avatars.com/api/?name={request.user.username}&background=random&color=fff'
-        }
-
-    event_challenges = Challenge.objects.filter(event=event)
-    event_total_challenges = event_challenges.count()
-    event_total_points = event_challenges.aggregate(total=models.Sum('points'))['total'] or 0
-
-    return JsonResponse({
-        'is_team_mode': False,
-        'leaderboard': sorted_users,
-        'event': event.event_name,
-        'event_total_points': event_total_points,
-        'event_total_challenges': event_total_challenges,
-        'current_user_stats': current_user_stats
-    })
 
 
 @require_GET

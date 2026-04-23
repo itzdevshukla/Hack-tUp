@@ -1,78 +1,78 @@
+"""
+ctf/consumers.py
+────────────────
+Django Channels WebSocket consumer.
+
+Per-event channel groups replace the old file-based IPC:
+  • Clients connect to  /ws/event/<event_id>/
+  • On connect they join group  event_<event_id>
+  • services.broadcast_leaderboard_update() sends to that group
+  • Consumer forwards the message to every connected client
+
+This scales horizontally — add more Daphne workers and the Redis channel
+layer handles fan-out automatically.
+"""
+
 import json
-import asyncio
-import os
-from django.conf import settings
+import logging
+
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-active_ctf_consumers = set()
-background_task = None
+logger = logging.getLogger(__name__)
 
-def get_event_file_path():
-    return os.path.join(settings.BASE_DIR, 'ws_events.log')
-
-async def poll_ipc_events():
-    event_file = get_event_file_path()
-    
-    # Ensure file exists
-    if not os.path.exists(event_file):
-        with open(event_file, 'a') as f:
-            pass
-            
-    last_size = os.path.getsize(event_file)
-
-    while True:
-        try:
-            if not active_ctf_consumers:
-                await asyncio.sleep(1)
-                continue
-                
-            current_size = os.path.getsize(event_file)
-            
-            # File was truncated or deleted
-            if current_size < last_size:
-                last_size = 0
-                
-            if current_size > last_size:
-                with open(event_file, 'r') as f:
-                    f.seek(last_size)
-                    new_data = f.read()
-                
-                last_size = current_size
-                
-                # Broadcast events
-                for line in new_data.strip().split('\n'):
-                    if line.strip():
-                        try:
-                            event = json.loads(line)
-                            
-                            disconnected = set()
-                            for consumer in list(active_ctf_consumers):
-                                try:
-                                    await consumer.send(text_data=json.dumps(event))
-                                except Exception:
-                                    disconnected.add(consumer)
-                                    
-                            for d in disconnected:
-                                active_ctf_consumers.discard(d)
-                        except json.JSONDecodeError:
-                            pass
-                            
-        except Exception as e:
-            print(f"[IPC Poller Error] {e}")
-            
-        await asyncio.sleep(0.5)
 
 class CTFUpdateConsumer(AsyncWebsocketConsumer):
+    """
+    WebSocket handler for a single CTF event.
+
+    URL param  ``event_id``  is the *encoded* event hash-id passed in the URL
+    (e.g. /ws/event/qOVpKyLg/).  We use it directly as part of the group name
+    so there is no DB lookup on connect.
+    """
+
     async def connect(self):
-        global background_task
-        active_ctf_consumers.add(self)
-        if background_task is None:
-            background_task = asyncio.create_task(poll_ipc_events())
+        self.event_id = self.scope["url_route"]["kwargs"]["event_id"]
+        self.group_name = f"event_{self.event_id}"
+
+        # Join the per-event group
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
+        logger.debug("WS connect: %s joined %s", self.channel_name, self.group_name)
+
     async def disconnect(self, close_code):
-        active_ctf_consumers.discard(self)
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        logger.debug("WS disconnect: %s left %s (code=%s)", self.channel_name, self.group_name, close_code)
 
     async def receive(self, text_data=None, bytes_data=None):
-        pass # Not expecting client-to-server messages
+        # Clients are read-only — ignore any incoming messages.
+        pass
 
+    # ── Group message handlers ────────────────────────────────────────────────
+    # The method name must match  type  in group_send with dots replaced by underscores.
+
+    async def leaderboard_update(self, event):
+        """Forwarded from services.broadcast_leaderboard_update()."""
+        await self.send(text_data=json.dumps({
+            "type": "leaderboard_update",
+            "data": event["payload"],
+        }))
+
+    async def new_submission(self, event):
+        """Forwarded from signals for the live admin feed."""
+        await self.send(text_data=json.dumps({
+            "type": "new_submission",
+            "data": event["data"],
+        }))
+
+    async def new_announcement(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "new_announcement",
+            "data": event["data"],
+        }))
+
+    async def refresh_announcements(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "refresh_announcements",
+            "data": {},
+        }))

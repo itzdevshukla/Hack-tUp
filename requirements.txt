@@ -38,6 +38,7 @@ gunicorn==25.0.2
 daphne
 channels
 channels-redis>=4.0.0
+redis>=4.5.0
 
 # ------------------------------------
 # Security & Rate Limiting

@@ -40,6 +40,7 @@ urlpatterns = [
     # Challenges
     path('event/<hashid:event_id>/challenges/', challenge_api.event_challenges_api, name='api_event_challenges'),
     path('event/<hashid:event_id>/leaderboard/', challenge_api.event_leaderboard_api, name='api_event_leaderboard'),
+    path('event/<hashid:event_id>/leaderboard/history/', challenge_api.event_leaderboard_history_api, name='api_event_leaderboard_history'),
     path('event/<hashid:event_id>/announcements/', challenge_api.event_announcements_api, name='api_event_announcements'),
     path('event/<hashid:event_id>/writeups/', challenge_api.event_writeups_api, name='api_event_writeups'),
     path('challenge/<hashid:challenge_id>/submit/', challenge_api.submit_flag_api, name='api_challenge_submit'),

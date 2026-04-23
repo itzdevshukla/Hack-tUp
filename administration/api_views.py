@@ -1,7 +1,5 @@
 from ctf.utils import encode_id, decode_id
 from challenges.signals import emit_ws_event
-from challenges.signals import emit_ws_event
-from challenges.signals import emit_ws_event
 from django.http import JsonResponse
 from django.contrib.auth.models import User
 from django.db.models import Count, Sum, Min, Max
@@ -721,8 +719,6 @@ def admin_create_challenge_api(request, event_id):
                     ChallengeAttachment.objects.create(challenge=challenge, file=uploaded_file)
 
             emit_ws_event("challenge_updated", {"event_id": encode_id(event.id)})
-            emit_ws_event("challenge_updated", {"event_id": encode_id(event.id)})
-            emit_ws_event("challenge_updated", {"event_id": encode_id(event.id)})
             return JsonResponse({"message": "Challenge created successfully", "id": encode_id(challenge.id)}, status=201)
         except Exception as e:
             import traceback
@@ -838,8 +834,6 @@ def admin_challenge_detail_api(request, event_id, challenge_id):
                 
             challenge.save()
             emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
-            emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
-            emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
             return JsonResponse({"message": "Challenge updated successfully"})
         except Exception as e:
             import traceback
@@ -848,8 +842,6 @@ def admin_challenge_detail_api(request, event_id, challenge_id):
             
     elif request.method == "DELETE":
         challenge.delete()
-        emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
-        emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
         emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
         return JsonResponse({"message": "Challenge deleted successfully"})
         
@@ -886,8 +878,6 @@ def admin_waves_api(request, event_id):
             if not name:
                 return JsonResponse({"error": "Wave name is required"}, status=400)
             wave = ChallengeWave.objects.create(event=event, name=name, order=order)
-            emit_ws_event("waves_updated", {"event_id": encode_id(event.id)})
-            emit_ws_event("waves_updated", {"event_id": encode_id(event.id)})
             emit_ws_event("waves_updated", {"event_id": encode_id(event.id)})
             return JsonResponse({"id": encode_id(wave.id), "name": wave.name, "order": wave.order, "is_active": wave.is_active, "challenge_count": 0}, status=201)
         except Exception as e:
@@ -933,16 +923,12 @@ def admin_wave_detail_api(request, event_id, wave_id):
                 )
                 
             emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
-            emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
-            emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
             return JsonResponse({"id": encode_id(wave.id), "name": wave.name, "is_active": wave.is_active, "order": wave.order})
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
 
     if request.method == "DELETE":
         wave.delete()
-        emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
-        emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
         emit_ws_event("waves_updated", {"event_id": encode_id(event_id)})
         return JsonResponse({"message": "Wave deleted successfully"})
 
@@ -982,8 +968,6 @@ def admin_wave_challenges_api(request, event_id, wave_id):
             Challenge.objects.filter(wave=wave).exclude(id__in=challenge_ids).update(wave=None)
             # Assign selected challenges to this wave
             Challenge.objects.filter(id__in=challenge_ids, event_id=event_id).update(wave=wave)
-            emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
-            emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
             emit_ws_event("challenge_updated", {"event_id": encode_id(event_id)})
             return JsonResponse({"message": "Challenges assigned successfully", "count": len(challenge_ids)})
         except Exception as e:

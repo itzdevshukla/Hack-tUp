@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams } from 'react-router-dom';
-import { useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaClock, FaTrophy, FaMedal, FaFlag, FaUsers, FaUser, FaCrown, FaChartLine, FaExclamationTriangle } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -71,39 +71,77 @@ const CHART_COLORS = [
 
 function CustomTooltip({ active, payload, label }) {
     if (active && payload && payload.length) {
-        // Filter out everyone except the ACTUAL person who had an event/solve exactly at this tick!
-        const isolatedPayload = payload.filter(pld => pld.payload[`${pld.dataKey}_isEvent`]);
-        // Fast fallback if someone hovers obscurely and no exact match is found
-        const renderPayload = isolatedPayload.length > 0 ? isolatedPayload : payload;
+        // Sort by value descending
+        const sorted = [...payload].sort((a, b) => b.value - a.value);
+        
+        // Find if anyone solved something at this exact tick
+        const events = payload
+            .filter(pld => pld.payload[`${pld.dataKey}_isEvent`]);
 
-        // Sort highest point on top
-        const sorted = [...renderPayload].sort((a, b) => b.value - a.value);
         return (
             <div style={{
-                background: 'rgba(5, 5, 5, 0.85)',
-                border: '1px solid rgba(154, 205, 50, 0.25)',
+                background: 'rgba(5, 8, 5, 0.85)',
+                border: '1px solid rgba(154, 205, 50, 0.3)',
                 padding: '12px 18px',
-                borderRadius: '12px',
+                borderRadius: '8px',
                 backdropFilter: 'blur(12px)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.9), inset 0 0 20px rgba(154, 205, 50, 0.05)',
-                minWidth: '220px',
-                color: '#fff'
+                boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
+                minWidth: '240px',
+                fontFamily: 'Inter, sans-serif'
             }}>
-                <div style={{ margin: '0 0 12px 0', color: '#9ACD32', fontSize: '0.75rem', fontFamily: 'Orbitron, sans-serif', letterSpacing: '2px', borderBottom: '1px solid rgba(154,205,50,0.15)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <FaClock style={{ fontSize: '0.7rem' }} />
-                    {payload[0]?.payload?.rawTime ? payload[0].payload.rawTime.replace('T', ' ').substring(0, 19) : label}
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    marginBottom: '10px', 
+                    borderBottom: '1px solid rgba(154,205,50,0.15)',
+                    paddingBottom: '8px'
+                }}>
+                    <span style={{ color: '#9ACD32', fontSize: '0.65rem', fontFamily: 'Orbitron, sans-serif', letterSpacing: '2px' }}>
+                        TIMELINE SNAPSHOT
+                    </span>
+                    <span style={{ color: '#fff', fontSize: '0.7rem', opacity: 0.6 }}>
+                        {label}
+                    </span>
                 </div>
-                {sorted.map((pld, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', marginBottom: '8px', fontSize: '0.85rem' }}>
-                        <span style={{ color: pld.color, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pld.color, display: 'inline-block', boxShadow: `0 0 10px ${pld.color}` }} />
-                            {pld.name}
-                        </span>
-                        <span style={{ color: pld.color, fontWeight: 900, fontFamily: 'Orbitron, sans-serif', textShadow: `0 0 10px ${pld.color}66` }}>
-                            {pld.value}
-                        </span>
+
+                {/* HIGHLIGHT SOLVES */}
+                {events.length > 0 && (
+                    <div style={{ marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {events.map((ev, i) => (
+                            <div key={i} style={{ 
+                                background: 'rgba(154, 205, 50, 0.1)', 
+                                padding: '6px 10px', 
+                                borderRadius: '4px',
+                                borderLeft: `3px solid ${ev.color}`
+                            }}>
+                                <div style={{ fontSize: '0.55rem', color: ev.color, fontWeight: 900, textTransform: 'uppercase' }}>
+                                    {ev.name} SOLVED
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 600 }}>
+                                    {ev.payload[`${ev.dataKey}_eventDetails`]?.flagName || 'Challenge'}
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                ))}
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {sorted.slice(0, 5).map((pld, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: pld.color, boxShadow: `0 0 8px ${pld.color}` }} />
+                                <span style={{ fontSize: '0.8rem', color: '#ccc' }}>{pld.name}</span>
+                            </div>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#fff', fontFamily: 'Orbitron, sans-serif' }}>{pld.value}</span>
+                        </div>
+                    ))}
+                    {sorted.length > 5 && (
+                        <div style={{ fontSize: '0.6rem', color: '#555', textAlign: 'center', marginTop: '4px' }}>
+                            + {sorted.length - 5} OTHERS
+                        </div>
+                    )}
+                </div>
             </div>
         );
     }
@@ -251,7 +289,11 @@ function TimelineGraph({ board, isTeamMode }) {
                             tickMargin={12}
                             tick={{ fill: 'rgba(255,255,255,0.5)' }}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} shared={false} />
+                        <Tooltip 
+                            content={<CustomTooltip />} 
+                            cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }} 
+                            shared={true} 
+                        />
                         <Legend 
                             wrapperStyle={{ fontSize: '12px', paddingTop: '15px', color: '#ccc', fontFamily: 'Orbitron, sans-serif' }}
                             iconType="circle"
@@ -269,7 +311,8 @@ function TimelineGraph({ board, isTeamMode }) {
                                     strokeWidth={3}
                                     dot={(props) => renderCustomDot({ ...props, lineFill: color })}
                                     activeDot={(props) => renderActiveHoverDot({ ...props, lineFill: color })}
-                                    isAnimationActive={false}
+                                    isAnimationActive={true}
+                                    animationDuration={1500}
                                 />
                             );
                         })}
@@ -298,6 +341,7 @@ function TimelineGraph({ board, isTeamMode }) {
 ───────────────────────────────────────────────────────────────── */
 export default function EventLeaderboard() {
     const { id } = useParams();
+    const { user } = useAuth();
     const [board, setBoard] = useState([]);
     const [eventName, setEventName] = useState('');
     const [isTeamMode, setIsTeamMode] = useState(false);
@@ -311,20 +355,37 @@ export default function EventLeaderboard() {
     const lastWsEvent = outletCtx?.lastWsEvent;
 
 
+    const fetchHistory = useCallback(async (currentBoard) => {
+        if (!currentBoard || currentBoard.length === 0) return currentBoard;
+        try {
+            const res = await fetch(`/api/event/${id}/leaderboard/history/?top=10`);
+            if (!res.ok) return currentBoard;
+            const json = await res.json();
+            // json.histories = [{id, name, history: [...]}]
+            const histMap = {};
+            (json.histories || []).forEach(h => { histMap[h.id] = h.history; });
+            return currentBoard.map(p => histMap[p.id] ? { ...p, history: histMap[p.id] } : p);
+        } catch {
+            return currentBoard;
+        }
+    }, [id]);
+
     const fetchData = useCallback(async (silent = false) => {
         if (!silent) setLoading(true);
         try {
             const res = await fetch(`/api/event/${id}/leaderboard/`);
             if (res.ok) {
                 const json = await res.json();
-                setBoard(json.leaderboard || []);
+                const lb = json.leaderboard || [];
+                const lbWithHistory = await fetchHistory(lb);
+                setBoard(lbWithHistory);
                 setEventName(json.event || '');
                 setIsTeamMode(json.is_team_mode || false);
                 setLastUpdated(new Date());
             }
         } catch { }
         finally { if (!silent) setLoading(false); }
-    }, [id]);
+    }, [id, fetchHistory]);
 
     useEffect(() => {
         fetchData();
@@ -335,15 +396,30 @@ export default function EventLeaderboard() {
         if (!lastWsEvent || lastWsEvent.type !== 'leaderboard_update') return;
         const d = lastWsEvent.data;
         if (d?.leaderboard?.length > 0) {
-            setBoard(d.leaderboard);
-            if (d.event) setEventName(d.event);
-            if (d.is_team_mode !== undefined) setIsTeamMode(d.is_team_mode);
-            setLastUpdated(new Date());
+            // Smooth Update: If WS payload already contains top_history, use it directly.
+            // This prevents a second fetch and makes the update flicker-free.
+            if (d.top_history) {
+                const histMap = {};
+                d.top_history.forEach(h => { histMap[h.id] = h.history; });
+                const lbWithHistory = d.leaderboard.map(p => histMap[p.id] ? { ...p, history: histMap[p.id] } : p);
+                setBoard(lbWithHistory);
+                if (d.event) setEventName(d.event);
+                if (d.is_team_mode !== undefined) setIsTeamMode(d.is_team_mode);
+                setLastUpdated(new Date());
+            } else {
+                // Fallback to fetch if not present
+                fetchHistory(d.leaderboard).then(lbWithHistory => {
+                    setBoard(lbWithHistory);
+                    if (d.event) setEventName(d.event);
+                    if (d.is_team_mode !== undefined) setIsTeamMode(d.is_team_mode);
+                    setLastUpdated(new Date());
+                });
+            }
         } else {
             if (debounceRef.current) clearTimeout(debounceRef.current);
             debounceRef.current = setTimeout(() => fetchData(true), 1500);
         }
-    }, [lastWsEvent, fetchData]);
+    }, [lastWsEvent, fetchData, fetchHistory]);
 
     // Only show solvers
     const activeBoard = board.filter(p => (p.flags || 0) > 0);
@@ -440,7 +516,12 @@ export default function EventLeaderboard() {
                                     ) : (
                                         activeBoard.map((player, idx) => {
                                             const rank = idx + 1;
-                                            const isMe = player.is_me || player.is_my_team;
+                                            
+                                            // Dynamic "isMe" detection (works with cached data)
+                                            const isMe = isTeamMode 
+                                                ? (player.members && user?.username && player.members.includes(user.username))
+                                                : (player.username === user?.username);
+
                                             const name = isTeamMode ? player.name : player.username;
                                             const top1 = rank === 1;
                                             const top3 = rank <= 3;

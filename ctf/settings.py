@@ -129,7 +129,25 @@ else:
             'BACKEND': 'channels.layers.InMemoryChannelLayer'
         }
     }
-
+# ─────────────────────────────────────────────────────────────────────────────
+# Caching (Redis)
+# ─────────────────────────────────────────────────────────────────────────────
+if 'REDIS_URL' in os.environ:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": os.environ['REDIS_URL'],
+            "OPTIONS": {
+                # Built-in Django RedisCache doesn't need CLIENT_CLASS
+            }
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases

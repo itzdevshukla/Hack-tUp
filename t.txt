@@ -1,0 +1,12 @@
+Maine hashes use kiye hain make_password ke saath security ke liye, par unke plaintext values yeh hain:
+
+Challenge	Flag (Plaintext)
+Web Recon	Hack!tUp{web_recon}
+XSS Strike	Hack!tUp{xss_strike}
+SQL Injection	Hack!tUp{sql_injection}
+Caesar Leak	Hack!tUp{caesar_leak}
+RSA Crack	Hack!tUp{rsa_crack}
+Memory Dump	Hack!tUp{memory_dump}
+OSINT Hunt	Hack!tUp{osint_hunt}
+Buffer Bof	Hack!tUp{buffer_bof}
+Aap in flags ko submit karke real-time updates aur graph transitions test kar sakte ho! 🏁🔥
