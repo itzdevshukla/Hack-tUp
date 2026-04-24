@@ -297,59 +297,65 @@ def submit_flag_api(request, challenge_id):
     if challenge.wave and not challenge.wave.is_active:
         return JsonResponse({'error': 'Challenge locked. It belongs to an inactive wave.'}, status=403)
 
-    # ── Team mode: check if challenge already solved by team ──────────
-    if event.is_team_mode:
-        from teams.models import TeamMember, TeamChallenge
-        membership = TeamMember.objects.filter(user=request.user, team__event=event).first()
-        if membership:
-            team_already_solved = TeamChallenge.objects.filter(
-                team=membership.team, challenge=challenge
-            ).exists()
-            if team_already_solved:
-                return JsonResponse({'success': False, 'message': 'Your team has already solved this challenge'})
+    from django.db import transaction
+    with transaction.atomic():
+        # Lock user to prevent concurrent race condition submissions (Points Multiplier Bypass)
+        from django.contrib.auth import get_user_model
+        get_user_model().objects.select_for_update().get(id=request.user.id)
 
-    # Check if already solved (individual, for non-team or fallback)
-    already_solved = UserChallenge.objects.filter(
-        user=request.user, 
-        challenge=challenge, 
-        is_correct=True
-    ).exists()
-
-    if already_solved and current_status != 'completed':
-        return JsonResponse({'success': False, 'message': 'Already solved'})
-        
-    # Create valid submission record even if wrong (for logs)
-    user_submission = UserChallenge.objects.create(
-        user=request.user,
-        challenge=challenge,
-        submitted_flag=submitted_flag[:50],
-        is_correct=False
-    )
-    
-    is_correct = check_password(submitted_flag, challenge.flag)
-    
-    if is_correct:
-        # Update submission to be correct
-        user_submission.is_correct = True
-        user_submission.save()
-
-        # ── Team mode: credit solve to the team ───────────────────────
+        # ── Team mode: check if challenge already solved by team ──────────
         if event.is_team_mode:
             from teams.models import TeamMember, TeamChallenge
             membership = TeamMember.objects.filter(user=request.user, team__event=event).first()
             if membership:
-                TeamChallenge.objects.get_or_create(
-                    team=membership.team,
-                    challenge=challenge,
-                    defaults={'solved_by': request.user}
-                )
+                team_already_solved = TeamChallenge.objects.filter(
+                    team=membership.team, challenge=challenge
+                ).exists()
+                if team_already_solved:
+                    return JsonResponse({'success': False, 'message': 'Your team has already solved this challenge'})
+
+        # Check if already solved (individual, for non-team or fallback)
+        already_solved = UserChallenge.objects.filter(
+            user=request.user, 
+            challenge=challenge, 
+            is_correct=True
+        ).exists()
+
+        if already_solved and current_status != 'completed':
+            return JsonResponse({'success': False, 'message': 'Already solved'})
+            
+        # Create valid submission record even if wrong (for logs)
+        user_submission = UserChallenge.objects.create(
+            user=request.user,
+            challenge=challenge,
+            submitted_flag=submitted_flag[:50],
+            is_correct=False
+        )
         
-        if event.status == 'ended':
-             return JsonResponse({'success': True, 'message': 'Correct (Practice Mode)', 'points': 0})
+        is_correct = check_password(submitted_flag, challenge.flag)
         
-        return JsonResponse({'success': True, 'message': 'Flag Correct!', 'points': challenge.points})
-    else:
-        return JsonResponse({'success': False, 'message': 'Incorrect Flag'})
+        if is_correct:
+            # Update submission to be correct
+            user_submission.is_correct = True
+            user_submission.save()
+
+            # ── Team mode: credit solve to the team ───────────────────────
+            if event.is_team_mode:
+                from teams.models import TeamMember, TeamChallenge
+                membership = TeamMember.objects.filter(user=request.user, team__event=event).first()
+                if membership:
+                    TeamChallenge.objects.get_or_create(
+                        team=membership.team,
+                        challenge=challenge,
+                        defaults={'solved_by': request.user}
+                    )
+            
+            if event.status == 'ended':
+                 return JsonResponse({'success': True, 'message': 'Correct (Practice Mode)', 'points': 0})
+            
+            return JsonResponse({'success': True, 'message': 'Flag Correct!', 'points': challenge.points})
+        else:
+            return JsonResponse({'success': False, 'message': 'Incorrect Flag'})
 
 @login_required
 @require_GET
