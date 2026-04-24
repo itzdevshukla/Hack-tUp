@@ -60,10 +60,12 @@ class CTFUpdateConsumer(AsyncWebsocketConsumer):
 
     async def new_submission(self, event):
         """Forwarded from signals for the live admin feed."""
-        await self.send(text_data=json.dumps({
-            "type": "new_submission",
-            "data": event["data"],
-        }))
+        user = self.scope.get("user")
+        if user and user.is_authenticated and (user.is_staff or user.is_superuser):
+            await self.send(text_data=json.dumps({
+                "type": "new_submission",
+                "data": event["data"],
+            }))
 
     async def new_announcement(self, event):
         await self.send(text_data=json.dumps({
