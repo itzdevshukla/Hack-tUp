@@ -141,7 +141,7 @@ def broadcast_leaderboard_update(event_id: int, payload: dict | None = None) -> 
         for entry in top_10:
             eid = decode_id(entry['id'])
             if eid:
-                h = build_entity_history(event, eid, is_team=is_team)
+                h = build_entity_history(event, eid, is_team=is_team, force_refresh=True)
                 histories.append({'id': entry['id'], 'history': h})
         
         payload['top_history'] = histories
@@ -385,19 +385,21 @@ def _build_individual_payload(event) -> dict:
 # History builder — called from the dedicated /history/ endpoint only
 # ─────────────────────────────────────────────────────────────────────────────
 
-def build_entity_history(event, entity_id: int, is_team: bool) -> list:
+def build_entity_history(event, entity_id: int, is_team: bool, force_refresh: bool = False) -> list:
     """
     Build the score timeline for a single user or team.
     Returns a list of history dicts sorted by timestamp.
     Heavy — should only be called on-demand, not on every leaderboard request.
     """
     cache_key = f"leaderboard:{event.id}:history:{'team' if is_team else 'user'}:{entity_id}"
-    cached = cache.get(cache_key)
-    if cached:
-        try:
-            return json.loads(cached) if isinstance(cached, str) else cached
-        except Exception:
-            pass
+    
+    if not force_refresh:
+        cached = cache.get(cache_key)
+        if cached:
+            try:
+                return json.loads(cached) if isinstance(cached, str) else cached
+            except Exception:
+                pass
 
     from challenges.models import UserChallenge, UserHint
 
