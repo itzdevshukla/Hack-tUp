@@ -14,7 +14,9 @@ get_leaderboard_data()  is a pure Redis read — always <5 ms.
 
 import json
 import logging
+import time
 from datetime import datetime
+from contextlib import contextmanager
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -44,6 +46,17 @@ def _ws_group(event_id: int) -> str:
     return f"event_{encode_id(event_id)}"
 
 
+@contextmanager
+def redis_lock(lock_key, timeout=30):
+    """Simple Redis-based lock using Django's cache.add (SETNX)."""
+    acquired = cache.add(lock_key, "locked", timeout=timeout)
+    try:
+        yield acquired
+    finally:
+        if acquired:
+            cache.delete(lock_key)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Public API
 # ─────────────────────────────────────────────────────────────────────────────
@@ -67,25 +80,41 @@ def get_leaderboard_data(event_id: int) -> dict | None:
 def update_leaderboard_cache(event_id: int) -> dict | None:
     """
     Recomputes the leaderboard from DB, writes it into Redis, and returns the
-    payload.  Called from signals — never from the API view.
+    payload.  Uses a Redis lock to prevent cache stampedes.
     """
-    from administration.models import Event
-    try:
-        event = Event.objects.select_related().get(pk=event_id)
-    except Event.DoesNotExist:
-        logger.warning("update_leaderboard_cache: event %s not found", event_id)
-        return None
+    lock_key = f"leaderboard:lock:{event_id}"
+    
+    # Attempt to acquire lock with brief retries
+    for _ in range(5):
+        with redis_lock(lock_key) as acquired:
+            if acquired:
+                # Double-check cache inside lock
+                cached = get_leaderboard_data(event_id)
+                if cached:
+                    return cached
 
-    try:
-        payload = _build_payload(event)
-    except Exception:
-        logger.exception("update_leaderboard_cache: build failed for event %s", event_id)
-        return None
+                from administration.models import Event
+                try:
+                    event = Event.objects.select_related().get(pk=event_id)
+                except Event.DoesNotExist:
+                    logger.warning("update_leaderboard_cache: event %s not found", event_id)
+                    return None
 
-    if payload:
-        cache.set(_data_key(event_id), payload, timeout=LEADERBOARD_TTL)
+                try:
+                    payload = _build_payload(event)
+                except Exception:
+                    logger.exception("update_leaderboard_cache: build failed for event %s", event_id)
+                    return None
 
-    return payload
+                if payload:
+                    cache.set(_data_key(event_id), payload, timeout=LEADERBOARD_TTL)
+                return payload
+            else:
+                # Lock held by another process; wait briefly and retry
+                time.sleep(1.0)
+
+    # Fallback: if we timed out waiting for the lock, try to return stale data if available
+    return get_leaderboard_data(event_id)
 
 
 def broadcast_leaderboard_update(event_id: int, payload: dict | None = None) -> None:
@@ -213,23 +242,35 @@ def _build_team_payload(event) -> dict:
     total_points = Challenge.objects.filter(event=event).aggregate(total=Sum("points"))["total"] or 0
 
     rows = []
+    team_map = {}
+    user_to_team_map = {}
+
     for team in teams:
         raw_pts, flags = solve_map.get(team.id, (0, 0))
         hint_cost = hint_map.get(team.id, 0)
         pts = max(0, raw_pts - hint_cost)
         last_solve = last_solve_map.get(team.id)
 
-        rows.append({
-            "id": encode_id(team.id),
+        team_id_enc = encode_id(team.id)
+        member_list = [m.user.username for m in team.members.all()]
+        
+        # Populate lookup map for membership checks
+        for username in member_list:
+            user_to_team_map[username] = team_id_enc
+
+        entry = {
+            "id": team_id_enc,
             "name": team.name,
             "captain": team.captain.username,
-            "members": [m.user.username for m in team.members.all()],
+            "members": member_list,
             "member_count": team.members.count(),
             "points": pts,
             "flags": flags,
             "last_solve_time": last_solve.isoformat() if last_solve else None,
             "avatar": f"https://ui-avatars.com/api/?name={team.name}&background=random&color=fff",
-        })
+        }
+        rows.append(entry)
+        team_map[team_id_enc] = entry
 
     # Sort: points DESC, last_solve_time ASC (earlier = better tie-break)
     rows.sort(key=lambda t: (-t["points"], t["last_solve_time"] or ""))
@@ -238,13 +279,13 @@ def _build_team_payload(event) -> dict:
         row["rank"] = idx + 1
         row["totalFlags"] = total_challenges
         row["progress"] = (row["flags"] / total_challenges * 100) if total_challenges else 0
-        
-        # Rank-based color assignment (Slot 1 always gets Color 1, etc.)
         row["color"] = f"hsl({(idx * 137.5) % 360}, 85%, 60%)"
 
     return {
         "is_team_mode": True,
         "leaderboard": rows,
+        "team_map": team_map,
+        "user_to_team_map": user_to_team_map,
         "event": event.event_name,
         "event_total_points": total_points,
         "event_total_challenges": total_challenges,
@@ -300,6 +341,7 @@ def _build_individual_payload(event) -> dict:
     total_points = Challenge.objects.filter(event=event).aggregate(total=Sum("points"))["total"] or 0
 
     rows = []
+    user_map = {}
     for access in registered:
         uid = access.user_id
         raw_pts, flags = solve_map.get(uid, (0, 0))
@@ -307,15 +349,18 @@ def _build_individual_payload(event) -> dict:
         pts = max(0, raw_pts - hint_cost)
         last_solve = last_solve_map.get(uid)
 
-        rows.append({
-            "id": encode_id(uid),
+        uid_enc = encode_id(uid)
+        entry = {
+            "id": uid_enc,
             "username": access.user.username,
             "team": "Hack!t",
             "points": pts,
             "flags": flags,
             "last_solve_time": last_solve.isoformat() if last_solve else None,
             "avatar": f"https://ui-avatars.com/api/?name={access.user.username}&background=random&color=fff",
-        })
+        }
+        rows.append(entry)
+        user_map[uid_enc] = entry
 
     rows.sort(key=lambda u: (-u["points"], u["last_solve_time"] or ""))
 
@@ -324,13 +369,12 @@ def _build_individual_payload(event) -> dict:
         row["totalFlags"] = total_challenges
         row["maxPoints"] = total_points or 15000
         row["progress"] = (row["flags"] / total_challenges * 100) if total_challenges else 0
-        
-        # Rank-based color assignment (Slot 1 always gets Color 1, etc.)
         row["color"] = f"hsl({(idx * 137.5) % 360}, 85%, 60%)"
 
     return {
         "is_team_mode": False,
         "leaderboard": rows,
+        "user_map": user_map,
         "event": event.event_name,
         "event_total_points": total_points,
         "event_total_challenges": total_challenges,
@@ -344,9 +388,13 @@ def _build_individual_payload(event) -> dict:
 def build_entity_history(event, entity_id: int, is_team: bool) -> list:
     """
     Build the score timeline for a single user or team.
-    Returns a list of history dicts sorted by timestamp.
-    Heavy — should only be called on-demand, not on every leaderboard request.
+    Cached for 1 minute to prevent repeat heavy DB hits.
     """
+    cache_key = f"history:{event.id}:{'team' if is_team else 'user'}:{entity_id}"
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+
     from challenges.models import UserChallenge, UserHint
 
     event_start_iso = _get_event_start_iso(event)
@@ -383,4 +431,7 @@ def build_entity_history(event, entity_id: int, is_team: bool) -> list:
             "id": f"{evt['type']}-{evt['ts'].timestamp()}",
         })
     history.append({"flagName": "Current", "points": 0, "total": score, "timestamp": "Now", "rawTime": timezone.now().isoformat(), "id": "now"})
+    
+    # Cache history for 60 seconds
+    cache.set(cache_key, history, timeout=60)
     return history
