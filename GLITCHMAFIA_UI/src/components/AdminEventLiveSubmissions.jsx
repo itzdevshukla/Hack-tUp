@@ -37,7 +37,7 @@ function AdminEventLiveSubmissions() {
 
         // WebSocket for zero-API live updates
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${window.location.host}/ws/updates/`);
+        const ws = new WebSocket(`${protocol}//${window.location.host}/ws/event/${id}/`);
         wsRef.current = ws;
 
         ws.onmessage = (event) => {

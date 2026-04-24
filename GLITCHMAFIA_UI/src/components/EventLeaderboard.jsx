@@ -433,6 +433,12 @@ export default function EventLeaderboard() {
         if (!isUpdate) return;
 
         if (d?.leaderboard?.length > 0) {
+            // Clear any pending fallback fetches since we have the full payload
+            if (debounceRef.current) {
+                clearTimeout(debounceRef.current);
+                debounceRef.current = null;
+            }
+
             // Smooth Update: If WS payload already contains top_history, use it directly.
             // This prevents a second fetch and makes the update flicker-free.
             if (d.top_history) {
@@ -442,7 +448,18 @@ export default function EventLeaderboard() {
                 setBoard(lbWithHistory);
                 if (d.event) setEventName(d.event);
                 if (d.is_team_mode !== undefined) setIsTeamMode(d.is_team_mode);
-                if (d.my_standing) setMyStanding(d.my_standing);
+                
+                // If the backend sent my_standing, use it. Otherwise, derive it from the new board
+                if (d.my_standing) {
+                    setMyStanding(d.my_standing);
+                } else {
+                    setMyStanding(prev => {
+                        if (!prev) return prev;
+                        const me = lbWithHistory.find(u => u.id === prev.id);
+                        return me ? { ...prev, ...me } : prev;
+                    });
+                }
+                
                 setLastUpdated(new Date());
             } else {
                 // Fallback to fetch if not present
@@ -450,7 +467,17 @@ export default function EventLeaderboard() {
                     setBoard(lbWithHistory);
                     if (d.event) setEventName(d.event);
                     if (d.is_team_mode !== undefined) setIsTeamMode(d.is_team_mode);
-                    if (d.my_standing) setMyStanding(d.my_standing);
+                    
+                    if (d.my_standing) {
+                        setMyStanding(d.my_standing);
+                    } else {
+                        setMyStanding(prev => {
+                            if (!prev) return prev;
+                            const me = lbWithHistory.find(u => u.id === prev.id);
+                            return me ? { ...prev, ...me } : prev;
+                        });
+                    }
+                    
                     setLastUpdated(new Date());
                 });
             }

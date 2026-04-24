@@ -14,6 +14,7 @@ get_leaderboard_data()  is a pure Redis read — always <5 ms.
 
 import json
 import logging
+import time
 from datetime import datetime
 
 from asgiref.sync import async_to_sync
@@ -38,6 +39,10 @@ def _data_key(event_id: int) -> str:
 
 def _meta_key(event_id: int) -> str:
     return f"leaderboard:{event_id}:meta"
+
+
+def _lock_key(event_id: int) -> str:
+    return f"leaderboard:{event_id}:lock"
 
 
 def _ws_group(event_id: int) -> str:
@@ -68,24 +73,42 @@ def update_leaderboard_cache(event_id: int) -> dict | None:
     """
     Recomputes the leaderboard from DB, writes it into Redis, and returns the
     payload.  Called from signals — never from the API view.
+    Uses a Redis lock to prevent cache stampedes.
     """
-    from administration.models import Event
-    try:
-        event = Event.objects.select_related().get(pk=event_id)
-    except Event.DoesNotExist:
-        logger.warning("update_leaderboard_cache: event %s not found", event_id)
-        return None
+    lock_k = _lock_key(event_id)
+    # Try to acquire lock
+    acquired = cache.add(lock_k, "1", timeout=30)
+    
+    if not acquired:
+        # Another process is computing it. Wait for up to 5 seconds.
+        for _ in range(25):
+            time.sleep(0.2)
+            payload = get_leaderboard_data(event_id)
+            if payload:
+                return payload
+        logger.warning("Timeout waiting for leaderboard lock for event %s. Computing anyway.", event_id)
 
     try:
-        payload = _build_payload(event)
-    except Exception:
-        logger.exception("update_leaderboard_cache: build failed for event %s", event_id)
-        return None
+        from administration.models import Event
+        try:
+            event = Event.objects.select_related().get(pk=event_id)
+        except Event.DoesNotExist:
+            logger.warning("update_leaderboard_cache: event %s not found", event_id)
+            return None
 
-    if payload:
-        cache.set(_data_key(event_id), payload, timeout=LEADERBOARD_TTL)
+        try:
+            payload = _build_payload(event)
+        except Exception:
+            logger.exception("update_leaderboard_cache: build failed for event %s", event_id)
+            return None
 
-    return payload
+        if payload:
+            cache.set(_data_key(event_id), payload, timeout=LEADERBOARD_TTL)
+
+        return payload
+    finally:
+        if acquired:
+            cache.delete(lock_k)
 
 
 def broadcast_leaderboard_update(event_id: int, payload: dict | None = None) -> None:
@@ -234,6 +257,8 @@ def _build_team_payload(event) -> dict:
     # Sort: points DESC, last_solve_time ASC (earlier = better tie-break)
     rows.sort(key=lambda t: (-t["points"], t["last_solve_time"] or ""))
 
+    team_map = {}
+    member_map = {}
     for idx, row in enumerate(rows):
         row["rank"] = idx + 1
         row["totalFlags"] = total_challenges
@@ -241,10 +266,16 @@ def _build_team_payload(event) -> dict:
         
         # Rank-based color assignment (Slot 1 always gets Color 1, etc.)
         row["color"] = f"hsl({(idx * 137.5) % 360}, 85%, 60%)"
+        
+        team_map[row["id"]] = idx
+        for member in row["members"]:
+            member_map[member] = idx
 
     return {
         "is_team_mode": True,
         "leaderboard": rows,
+        "team_map": team_map,
+        "member_map": member_map,
         "event": event.event_name,
         "event_total_points": total_points,
         "event_total_challenges": total_challenges,
@@ -289,19 +320,29 @@ def _build_individual_payload(event) -> dict:
     solve_map = {r["user_id"]: (r["total_pts"] or 0, r["flags"] or 0) for r in solve_agg}
     hint_map = {r["user_id"]: (r["hint_cost"] or 0) for r in hint_agg}
 
-    # All registered users
-    registered = (
-        EventAccess.objects
-        .filter(event=event, is_registered=True)
-        .select_related("user")
-    )
+    # 1. Get explicitly banned users
+    banned_uids = set(EventAccess.objects.filter(event=event, is_banned=True).values_list("user_id", flat=True))
+
+    # 2. Get registered users
+    registered_accesses = EventAccess.objects.filter(event=event, is_registered=True).select_related("user")
+    user_dict = {acc.user_id: acc.user for acc in registered_accesses if acc.user_id not in banned_uids}
+
+    # 3. Get any user who has submitted a challenge (e.g. admins testing challenges without registering)
+    active_uids = set(UserChallenge.objects.filter(challenge__event=event).values_list("user_id", flat=True))
+    missing_uids = active_uids - set(user_dict.keys()) - banned_uids
+
+    if missing_uids:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        missing_users = User.objects.filter(id__in=missing_uids)
+        for u in missing_users:
+            user_dict[u.id] = u
 
     total_challenges = Challenge.objects.filter(event=event).count()
     total_points = Challenge.objects.filter(event=event).aggregate(total=Sum("points"))["total"] or 0
 
     rows = []
-    for access in registered:
-        uid = access.user_id
+    for uid, user in user_dict.items():
         raw_pts, flags = solve_map.get(uid, (0, 0))
         hint_cost = hint_map.get(uid, 0)
         pts = max(0, raw_pts - hint_cost)
@@ -309,16 +350,17 @@ def _build_individual_payload(event) -> dict:
 
         rows.append({
             "id": encode_id(uid),
-            "username": access.user.username,
+            "username": user.username,
             "team": "Hack!t",
             "points": pts,
             "flags": flags,
             "last_solve_time": last_solve.isoformat() if last_solve else None,
-            "avatar": f"https://ui-avatars.com/api/?name={access.user.username}&background=random&color=fff",
+            "avatar": f"https://ui-avatars.com/api/?name={user.username}&background=random&color=fff",
         })
 
     rows.sort(key=lambda u: (-u["points"], u["last_solve_time"] or ""))
 
+    user_map = {}
     for idx, row in enumerate(rows):
         row["rank"] = idx + 1
         row["totalFlags"] = total_challenges
@@ -327,10 +369,13 @@ def _build_individual_payload(event) -> dict:
         
         # Rank-based color assignment (Slot 1 always gets Color 1, etc.)
         row["color"] = f"hsl({(idx * 137.5) % 360}, 85%, 60%)"
+        
+        user_map[row["id"]] = idx
 
     return {
         "is_team_mode": False,
         "leaderboard": rows,
+        "user_map": user_map,
         "event": event.event_name,
         "event_total_points": total_points,
         "event_total_challenges": total_challenges,
@@ -347,6 +392,14 @@ def build_entity_history(event, entity_id: int, is_team: bool) -> list:
     Returns a list of history dicts sorted by timestamp.
     Heavy — should only be called on-demand, not on every leaderboard request.
     """
+    cache_key = f"leaderboard:{event.id}:history:{'team' if is_team else 'user'}:{entity_id}"
+    cached = cache.get(cache_key)
+    if cached:
+        try:
+            return json.loads(cached) if isinstance(cached, str) else cached
+        except Exception:
+            pass
+
     from challenges.models import UserChallenge, UserHint
 
     event_start_iso = _get_event_start_iso(event)
@@ -383,4 +436,5 @@ def build_entity_history(event, entity_id: int, is_team: bool) -> list:
             "id": f"{evt['type']}-{evt['ts'].timestamp()}",
         })
     history.append({"flagName": "Current", "points": 0, "total": score, "timestamp": "Now", "rawTime": timezone.now().isoformat(), "id": "now"})
+    cache.set(cache_key, history, timeout=60)
     return history

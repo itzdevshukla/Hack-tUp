@@ -76,3 +76,17 @@ class CTFUpdateConsumer(AsyncWebsocketConsumer):
             "type": "refresh_announcements",
             "data": {},
         }))
+
+    async def challenge_updated(self, event):
+        """Forwarded when admin creates/edits/deletes a challenge."""
+        await self.send(text_data=json.dumps({
+            "type": "challenge_updated",
+            "data": event.get("data", {}),
+        }))
+
+    async def waves_updated(self, event):
+        """Forwarded when admin opens/closes/edits a wave."""
+        await self.send(text_data=json.dumps({
+            "type": "waves_updated",
+            "data": event.get("data", {}),
+        }))

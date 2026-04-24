@@ -95,7 +95,7 @@ const Challenges = () => {
         fetchEventRules();
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/updates/`;
+        const wsUrl = `${protocol}//${window.location.host}/ws/event/${id}/`;
         let ws;
 
         try {

@@ -13,6 +13,8 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import check_password
 from django.utils import timezone
 from datetime import datetime
+from django.core.cache import cache
+import copy
 
 from administration.models import Event
 from administration.api_views import is_admin
@@ -366,10 +368,20 @@ def event_leaderboard_api(request, event_id):
     event = get_object_or_404(Event, id=event_id)
 
     # Only registered, non-banned users may view the leaderboard.
-    access = EventAccess.objects.filter(user=request.user, event=event).first()
+    access_cache_key = f"user:{request.user.id}:event:{event.id}:access"
+    access_status = cache.get(access_cache_key)
     is_privileged = is_admin(request, event_id=event.id)
+    
+    if access_status is None:
+        access = EventAccess.objects.filter(user=request.user, event=event).first()
+        if access:
+            access_status = {'is_registered': access.is_registered, 'is_banned': access.is_banned}
+        else:
+            access_status = {'is_registered': False, 'is_banned': False}
+        cache.set(access_cache_key, access_status, timeout=30)
+
     if not is_privileged:
-        if not access or not access.is_registered or access.is_banned:
+        if not access_status['is_registered'] or access_status['is_banned']:
             return JsonResponse({'error': 'Access denied'}, status=403)
 
     # ── Try Redis first ───────────────────────────────────────────────────────
@@ -391,40 +403,59 @@ def event_leaderboard_api(request, event_id):
     # Pre-calculate username for membership check if in team mode
     username = request.user.username
 
-    for entry in full_board:
-        is_me = False
-        if is_team_mode:
-            is_me = (username in entry.get('members', []))
-        else:
-            is_me = (entry.get('id') == my_encoded_id)
-            
-        if is_me:
-            entry['is_me'] = True
-            my_standing = entry
-        else:
-            entry['is_me'] = False
+    standing_idx = None
+    if is_team_mode:
+        member_map = payload.get('member_map', {})
+        standing_idx = member_map.get(username)
+    else:
+        user_map = payload.get('user_map', {})
+        standing_idx = user_map.get(my_encoded_id)
+
+    if standing_idx is not None and standing_idx < len(full_board):
+        my_standing = copy.deepcopy(full_board[standing_idx])
+        my_standing['is_me'] = True
 
     # Return only top 100 to the client, but include personal standing separately
-    payload['leaderboard'] = full_board[:100]
-    payload['my_standing'] = my_standing
+    top_100 = full_board[:100]
+    safe_top_100 = copy.deepcopy(top_100)
+    
+    for entry in safe_top_100:
+        if is_team_mode:
+            entry['is_me'] = (username in entry.get('members', []))
+        else:
+            entry['is_me'] = (entry.get('id') == my_encoded_id)
+
+    # Append the user/team if they are outside the top 100 so they can see their rank
+    if standing_idx is not None and standing_idx >= 100:
+        safe_top_100.append(my_standing)
+
+    # Remove the O(1) maps from the response payload to save bandwidth
+    response_payload = {k: v for k, v in payload.items() if k not in ('user_map', 'team_map', 'member_map', 'leaderboard')}
+    response_payload['leaderboard'] = safe_top_100
+    response_payload['my_standing'] = my_standing
 
     current_stats = my_standing
     if not current_stats:
         # User is registered but has zero solves — build a placeholder.
         if event.is_team_mode:
-            current_stats = {'name': 'No Team', 'rank': '-', 'points': 0, 'flags': 0,
-                             'totalFlags': payload.get('event_total_challenges', 0)}
+            from teams.models import TeamMember
+            team_name = 'No Team'
+            membership = TeamMember.objects.filter(user=request.user, team__event=event).first()
+            if membership:
+                team_name = membership.team.name
+            current_stats = {'name': team_name, 'rank': '-', 'points': 0, 'flags': 0,
+                             'totalFlags': response_payload.get('event_total_challenges', 0)}
         else:
             current_stats = {
                 'id': my_encoded_id,
                 'username': request.user.username,
                 'rank': '-', 'points': 0, 'flags': 0,
-                'totalFlags': payload.get('event_total_challenges', 0),
+                'totalFlags': response_payload.get('event_total_challenges', 0),
                 'avatar': f'https://ui-avatars.com/api/?name={request.user.username}&background=random&color=fff',
             }
 
     response_key = 'current_team_stats' if event.is_team_mode else 'current_user_stats'
-    return JsonResponse({**payload, response_key: current_stats})
+    return JsonResponse({**response_payload, response_key: current_stats})
 
 
 @login_required
@@ -447,10 +478,20 @@ def event_leaderboard_history_api(request, event_id):
     event = get_object_or_404(Event, id=event_id)
     is_team_mode = event.is_team_mode
 
-    access = EventAccess.objects.filter(user=request.user, event=event).first()
+    access_cache_key = f"user:{request.user.id}:event:{event.id}:access"
+    access_status = cache.get(access_cache_key)
     is_privileged = is_admin(request, event_id=event.id)
+    
+    if access_status is None:
+        access = EventAccess.objects.filter(user=request.user, event=event).first()
+        if access:
+            access_status = {'is_registered': access.is_registered, 'is_banned': access.is_banned}
+        else:
+            access_status = {'is_registered': False, 'is_banned': False}
+        cache.set(access_cache_key, access_status, timeout=30)
+
     if not is_privileged:
-        if not access or not access.is_registered or access.is_banned:
+        if not access_status['is_registered'] or access_status['is_banned']:
             return JsonResponse({'error': 'Access denied'}, status=403)
 
     # ── Resolve which entity to return history for ────────────────────────────
@@ -475,6 +516,8 @@ def event_leaderboard_history_api(request, event_id):
 
         if not is_privileged:
             top_n = min(top_n, 10)
+        else:
+            top_n = min(top_n, 100) # Prevents massive loops even for admins
 
         from challenges.services import get_leaderboard_data
         lb = get_leaderboard_data(event.id) or {}

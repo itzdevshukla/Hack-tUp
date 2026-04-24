@@ -77,15 +77,13 @@ function EventArenaLayout({ children }) {
         }
     }, [hideNavbar, eventLoading, teamRequired, hasTeam, location.pathname, id, navigate]);
 
-    // Announcements Polling
+    // Announcements + WebSocket with auto-reconnect
     useEffect(() => {
         if (!id) return;
         const fetchAnnouncements = async () => {
             try {
                 const res = await fetch(`/api/event/${id}/announcements/`, {
-                    headers: {
-                    'X-CSRFToken': getCsrfToken()
-                }
+                    headers: { 'X-CSRFToken': getCsrfToken() }
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -105,41 +103,71 @@ function EventArenaLayout({ children }) {
 
         fetchAnnouncements();
 
+        // ── WebSocket with auto-reconnect ─────────────────────────────
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws/event/${id}/`;
-        let ws;
 
-        try {
-            ws = new WebSocket(wsUrl);
-            ws.onmessage = (event) => {
-                try {
-                    const message = JSON.parse(event.data);
-                    // Broadcast event to all child routes via context
-                    setLastWsEvent({ ...message, _ts: Date.now() });
-                    if (message.type === 'new_announcement') {
-                        // Use pushed data directly instead of API call
-                        setAnnouncements(prev => [message.data, ...prev]);
-                        setUnreadCount(prev => prev + 1);
-                        
-                        // Show toast
-                        setNewNotificationToast(true);
-                        if (toastTimeout) clearTimeout(toastTimeout);
-                        const timeoutId = setTimeout(() => {
-                            setNewNotificationToast(false);
-                        }, 5000);
-                        setToastTimeout(timeoutId);
-                    } else if (message.type === 'refresh_announcements') {
-                        fetchAnnouncements();
+        let ws = null;
+        let retryCount = 0;
+        let retryTimer = null;
+        let destroyed = false;
+
+        const connect = () => {
+            if (destroyed) return;
+            try {
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    retryCount = 0; // reset backoff on successful connect
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        // Broadcast to all child routes via outlet context
+                        setLastWsEvent({ ...message, _ts: Date.now() });
+
+                        if (message.type === 'new_announcement') {
+                            setAnnouncements(prev => [message.data, ...prev]);
+                            setUnreadCount(prev => prev + 1);
+                            setNewNotificationToast(true);
+                            if (toastTimeout) clearTimeout(toastTimeout);
+                            const timeoutId = setTimeout(() => setNewNotificationToast(false), 5000);
+                            setToastTimeout(timeoutId);
+                        } else if (message.type === 'refresh_announcements') {
+                            fetchAnnouncements();
+                        }
+                    } catch (err) {
+                        console.error("WS parse error:", err);
                     }
-                } catch (err) {
-                    console.error("WS parse error:", err);
-                }
-            };
-        } catch (err) {
-            console.error("WS connection error:", err);
-        }
+                };
+
+                ws.onerror = (err) => {
+                    console.warn("Arena WS error:", err);
+                };
+
+                ws.onclose = (e) => {
+                    if (destroyed) return;
+                    // Exponential backoff: 1s, 2s, 4s, 8s, 16s (max 5 retries)
+                    if (retryCount < 5) {
+                        const delay = Math.min(1000 * Math.pow(2, retryCount), 16000);
+                        retryCount++;
+                        console.info(`Arena WS closed (code=${e.code}). Reconnecting in ${delay}ms… (attempt ${retryCount})`);
+                        retryTimer = setTimeout(connect, delay);
+                    } else {
+                        console.error("Arena WS gave up reconnecting after 5 attempts.");
+                    }
+                };
+            } catch (err) {
+                console.error("WS connection error:", err);
+            }
+        };
+
+        connect();
 
         return () => {
+            destroyed = true;
+            if (retryTimer) clearTimeout(retryTimer);
             if (ws) ws.close();
         };
     }, [id]);
