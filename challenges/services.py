@@ -21,8 +21,6 @@ from channels.layers import get_channel_layer
 from django.core.cache import cache
 from django.db.models import Sum
 from django.utils import timezone
-import time
-from contextlib import contextmanager
 
 from ctf.utils import encode_id
 
@@ -32,21 +30,6 @@ logger = logging.getLogger(__name__)
 # Key helpers
 # ─────────────────────────────────────────────────────────────────────────────
 LEADERBOARD_TTL = 60 * 60 * 6  # 6 hours — auto-expire after long events
-
-
-@contextmanager
-def redis_lock(lock_name: str, timeout: int = 30):
-    """
-    Simple distributed lock using Django's cache.add (SETNX).
-    Returns True if lock was acquired, False otherwise.
-    """
-    lock_key = f"lock:{lock_name}"
-    acquired = cache.add(lock_key, "1", timeout=timeout)
-    try:
-        yield acquired
-    finally:
-        if acquired:
-            cache.delete(lock_key)
 
 
 def _data_key(event_id: int) -> str:
@@ -84,39 +67,23 @@ def get_leaderboard_data(event_id: int) -> dict | None:
 def update_leaderboard_cache(event_id: int) -> dict | None:
     """
     Recomputes the leaderboard from DB, writes it into Redis, and returns the
-    payload.  Includes a lock to prevent cache stampedes.
+    payload.  Called from signals — never from the API view.
     """
     from administration.models import Event
-    
-    lock_name = f"leaderboard_rebuild:{event_id}"
-    
-    with redis_lock(lock_name) as acquired:
-        if not acquired:
-            # Someone else is already computing. Wait a bit and try to read from cache.
-            for _ in range(5): # Wait up to 2.5s
-                time.sleep(0.5)
-                payload = get_leaderboard_data(event_id)
-                if payload:
-                    return payload
-            # If still nothing, we might want to log a warning but avoid re-triggering heavy DB load
-            # unless absolutely necessary.
-            logger.warning("update_leaderboard_cache: lock busy for event %s", event_id)
-            return get_leaderboard_data(event_id)
+    try:
+        event = Event.objects.select_related().get(pk=event_id)
+    except Event.DoesNotExist:
+        logger.warning("update_leaderboard_cache: event %s not found", event_id)
+        return None
 
-        try:
-            event = Event.objects.select_related().get(pk=event_id)
-        except Event.DoesNotExist:
-            logger.warning("update_leaderboard_cache: event %s not found", event_id)
-            return None
+    try:
+        payload = _build_payload(event)
+    except Exception:
+        logger.exception("update_leaderboard_cache: build failed for event %s", event_id)
+        return None
 
-        try:
-            payload = _build_payload(event)
-        except Exception:
-            logger.exception("update_leaderboard_cache: build failed for event %s", event_id)
-            return None
-
-        if payload:
-            cache.set(_data_key(event_id), payload, timeout=LEADERBOARD_TTL)
+    if payload:
+        cache.set(_data_key(event_id), payload, timeout=LEADERBOARD_TTL)
 
     return payload
 
@@ -275,21 +242,9 @@ def _build_team_payload(event) -> dict:
         # Rank-based color assignment (Slot 1 always gets Color 1, etc.)
         row["color"] = f"hsl({(idx * 137.5) % 360}, 85%, 60%)"
 
-    # Build lookup maps for O(1) access in views
-    team_map = {row["id"]: row for row in rows}
-    
-    # user_id (int) -> team_id (encoded)
-    user_to_team = {}
-    for team in teams:
-        t_id = encode_id(team.id)
-        for m in team.members.all():
-            user_to_team[m.user.username] = t_id
-
     return {
         "is_team_mode": True,
         "leaderboard": rows,
-        "team_map": team_map,
-        "user_to_team": user_to_team,
         "event": event.event_name,
         "event_total_points": total_points,
         "event_total_challenges": total_challenges,
@@ -373,13 +328,9 @@ def _build_individual_payload(event) -> dict:
         # Rank-based color assignment (Slot 1 always gets Color 1, etc.)
         row["color"] = f"hsl({(idx * 137.5) % 360}, 85%, 60%)"
 
-    # Build lookup map for O(1) access in views
-    user_map = {row["id"]: row for row in rows}
-
     return {
         "is_team_mode": False,
         "leaderboard": rows,
-        "user_map": user_map,
         "event": event.event_name,
         "event_total_points": total_points,
         "event_total_challenges": total_challenges,
@@ -397,11 +348,6 @@ def build_entity_history(event, entity_id: int, is_team: bool) -> list:
     Heavy — should only be called on-demand, not on every leaderboard request.
     """
     from challenges.models import UserChallenge, UserHint
-
-    cache_key = f"history_v2:{event.id}:{'team' if is_team else 'user'}:{entity_id}"
-    cached = cache.get(cache_key)
-    if cached:
-        return cached
 
     event_start_iso = _get_event_start_iso(event)
     timeline = []
@@ -437,8 +383,4 @@ def build_entity_history(event, entity_id: int, is_team: bool) -> list:
             "id": f"{evt['type']}-{evt['ts'].timestamp()}",
         })
     history.append({"flagName": "Current", "points": 0, "total": score, "timestamp": "Now", "rawTime": timezone.now().isoformat(), "id": "now"})
-    
-    # Cache for 1 minute — short enough for live feel, long enough to protect DB
-    cache.set(cache_key, history, timeout=60)
-    
     return history
