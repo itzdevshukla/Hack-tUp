@@ -365,11 +365,22 @@ def event_leaderboard_api(request, event_id):
 
     event = get_object_or_404(Event, id=event_id)
 
-    # Only registered, non-banned users may view the leaderboard.
-    access = EventAccess.objects.filter(user=request.user, event=event).first()
+    # ── Optimized Access Check ────────────────────────────────────────────────
+    # Cache access status for 30s to reduce DB load on rapid refreshes
+    access_cache_key = f"access_check:{request.user.id}:{event.id}"
+    access_data = cache.get(access_cache_key)
+    
+    if access_data is None:
+        access = EventAccess.objects.filter(user=request.user, event=event).first()
+        access_data = {
+            'is_registered': access.is_registered if access else False,
+            'is_banned': access.is_banned if access else False
+        }
+        cache.set(access_cache_key, access_data, timeout=30)
+
     is_privileged = is_admin(request, event_id=event.id)
     if not is_privileged:
-        if not access or not access.is_registered or access.is_banned:
+        if not access_data['is_registered'] or access_data['is_banned']:
             return JsonResponse({'error': 'Access denied'}, status=403)
 
     # ── Try Redis first ───────────────────────────────────────────────────────
@@ -382,36 +393,53 @@ def event_leaderboard_api(request, event_id):
     if payload is None:
         return JsonResponse({'error': 'Leaderboard data unavailable'}, status=503)
 
-    # ── Scalability: Slice to Top 100 & Find My Standing ───────────────────────
-    full_board = payload.get('leaderboard', [])
+    # ── Scalability: O(1) Lookup & Find My Standing ───────────────────────────
     is_team_mode = payload.get('is_team_mode', False)
-    my_encoded_id = encode_id(request.user.id)
     my_standing = None
+    my_match_id = None
     
-    # Pre-calculate username for membership check if in team mode
-    username = request.user.username
+    if is_team_mode:
+        # O(1) team lookup via the new user_to_team map
+        user_to_team = payload.get('user_to_team', {})
+        my_match_id = user_to_team.get(request.user.username)
+        if my_match_id:
+            my_standing = payload.get('team_map', {}).get(my_match_id)
+    else:
+        # O(1) user lookup via the new user_map
+        my_match_id = encode_id(request.user.id)
+        my_standing = payload.get('user_map', {}).get(my_match_id)
 
-    for entry in full_board:
-        is_me = False
-        if is_team_mode:
-            is_me = (username in entry.get('members', []))
-        else:
-            is_me = (entry.get('id') == my_encoded_id)
-            
-        if is_me:
-            entry['is_me'] = True
-            my_standing = entry
-        else:
-            entry['is_me'] = False
+    # IMMUTABLE PATTERN: Never mutate the cached 'leaderboard' list.
+    # Create a fresh top-100 slice for the response and set is_me only there.
+    full_board = payload.get('leaderboard', [])
+    top_100 = []
+    for entry in full_board[:100]:
+        # Shallow copy entry to set is_me safely
+        entry_copy = dict(entry)
+        entry_copy['is_me'] = (entry.get('id') == my_match_id)
+        top_100.append(entry_copy)
 
-    # Return only top 100 to the client, but include personal standing separately
-    payload['leaderboard'] = full_board[:100]
-    payload['my_standing'] = my_standing
+    # Ensure my_standing also has is_me=True if found
+    if my_standing:
+        my_standing = dict(my_standing)
+        my_standing['is_me'] = True
+
+    payload_response = {
+        **payload,
+        'leaderboard': top_100,
+        'my_standing': my_standing
+    }
+
+    # Remove the internal maps from the final response to save bandwidth
+    payload_response.pop('user_map', None)
+    payload_response.pop('team_map', None)
+    payload_response.pop('user_to_team', None)
 
     current_stats = my_standing
     if not current_stats:
         # User is registered but has zero solves — build a placeholder.
-        if event.is_team_mode:
+        my_encoded_id = encode_id(request.user.id)
+        if is_team_mode:
             current_stats = {'name': 'No Team', 'rank': '-', 'points': 0, 'flags': 0,
                              'totalFlags': payload.get('event_total_challenges', 0)}
         else:
@@ -423,8 +451,8 @@ def event_leaderboard_api(request, event_id):
                 'avatar': f'https://ui-avatars.com/api/?name={request.user.username}&background=random&color=fff',
             }
 
-    response_key = 'current_team_stats' if event.is_team_mode else 'current_user_stats'
-    return JsonResponse({**payload, response_key: current_stats})
+    response_key = 'current_team_stats' if is_team_mode else 'current_user_stats'
+    return JsonResponse({**payload_response, response_key: current_stats})
 
 
 @login_required
