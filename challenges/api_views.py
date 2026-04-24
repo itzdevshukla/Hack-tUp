@@ -386,10 +386,15 @@ def event_leaderboard_api(request, event_id):
     if payload is None:
         return JsonResponse({'error': 'Leaderboard data unavailable'}, status=503)
 
-    # ── O(1) Standing Lookup (Immune to Cache Corruption) ─────────────────────
+    # ── Migration: Handle Old Cache Format ────────────────────────────────────
     is_team_mode = payload.get('is_team_mode', False)
+    if is_team_mode and 'team_map' not in payload:
+        payload = update_leaderboard_cache(event.id)
+    elif not is_team_mode and 'user_map' not in payload:
+        payload = update_leaderboard_cache(event.id)
+
+    # ── O(1) Standing Lookup (Immune to Cache Corruption) ─────────────────────
     my_standing = None
-    
     if is_team_mode:
         user_to_team = payload.get('user_to_team_map', {})
         my_team_id = user_to_team.get(request.user.username)
@@ -404,23 +409,14 @@ def event_leaderboard_api(request, event_id):
     if my_standing:
         my_standing['is_me'] = True
 
-    # ── Build Response (Top 100) ──────────────────────────────────────────────
-    # Slice to top 100 and set is_me correctly for the response only
-    full_board = payload.get('leaderboard', [])
-    top_100 = []
-    my_id = my_standing['id'] if my_standing else None
-
-    for entry in full_board[:100]:
-        # We must copy each entry if we're going to modify 'is_me'
-        entry_copy = entry.copy()
-        entry_copy['is_me'] = (entry_copy['id'] == my_id)
-        top_100.append(entry_copy)
-
-    # Fallback if user has no standing yet
+    # Fallback if user has no standing yet (e.g., zero solves or no team)
     if not my_standing:
         if is_team_mode:
-            my_standing = {'name': 'No Team', 'rank': '-', 'points': 0, 'flags': 0,
-                             'totalFlags': payload.get('event_total_challenges', 0), 'is_me': True}
+            my_standing = {
+                'id': 'none', # Safe ID for comparison
+                'name': 'No Team', 'rank': '-', 'points': 0, 'flags': 0,
+                'totalFlags': payload.get('event_total_challenges', 0), 'is_me': True
+            }
         else:
             my_standing = {
                 'id': encode_id(request.user.id),
@@ -431,15 +427,29 @@ def event_leaderboard_api(request, event_id):
                 'is_me': True
             }
 
-    # Re-assemble response payload (preserving existing structure)
-    response_payload = {
-        'is_team_mode': is_team_mode,
+    # ── Build Response (Top 100) ──────────────────────────────────────────────
+    full_board = payload.get('leaderboard', [])
+    top_100 = []
+    my_id = my_standing.get('id')
+
+    for entry in full_board[:100]:
+        # We must copy each entry if we're going to modify 'is_me'
+        entry_copy = entry.copy()
+        entry_copy['is_me'] = (entry_copy['id'] == my_id)
+        top_100.append(entry_copy)
+
+    # Re-assemble response payload, preserving all original keys (like top_history)
+    # but overwriting the leaderboard with our sliced/safe version.
+    response_payload = {**payload}
+    response_payload.update({
         'leaderboard': top_100,
-        'event': payload.get('event'),
-        'event_total_points': payload.get('event_total_points'),
-        'event_total_challenges': payload.get('event_total_challenges'),
         'my_standing': my_standing
-    }
+    })
+    
+    # Remove large lookup maps from the HTTP response to save bandwidth
+    response_payload.pop('user_map', None)
+    response_payload.pop('team_map', None)
+    response_payload.pop('user_to_team_map', None)
 
     response_key = 'current_team_stats' if is_team_mode else 'current_user_stats'
     response_payload[response_key] = my_standing
