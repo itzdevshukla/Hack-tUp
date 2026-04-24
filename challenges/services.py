@@ -76,16 +76,15 @@ def update_leaderboard_cache(event_id: int) -> dict | None:
     Uses a Redis lock to prevent cache stampedes.
     """
     lock_k = _lock_key(event_id)
-    # Try to acquire lock
-    acquired = cache.add(lock_k, "1", timeout=30)
-    
+    # Try to acquire lock, wait if necessary to guarantee fresh computation
+    acquired = False
+    for _ in range(50): # Wait up to 10 seconds
+        if cache.add(lock_k, "1", timeout=30):
+            acquired = True
+            break
+        time.sleep(0.2)
+        
     if not acquired:
-        # Another process is computing it. Wait for up to 5 seconds.
-        for _ in range(25):
-            time.sleep(0.2)
-            payload = get_leaderboard_data(event_id)
-            if payload:
-                return payload
         logger.warning("Timeout waiting for leaderboard lock for event %s. Computing anyway.", event_id)
 
     try:
