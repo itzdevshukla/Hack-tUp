@@ -1,7 +1,6 @@
 from ctf.utils import encode_id
 import json
 import logging
-import copy
 from django_ratelimit.decorators import ratelimit
 from django.db import models
 from django.http import JsonResponse
@@ -14,7 +13,6 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import check_password
 from django.utils import timezone
 from datetime import datetime
-from django.core.cache import cache
 
 from administration.models import Event
 from administration.api_views import is_admin
@@ -356,105 +354,77 @@ def submit_flag_api(request, challenge_id):
 def event_leaderboard_api(request, event_id):
     """
     Fast leaderboard endpoint — served from Redis cache.
-    Optimized for concurrency and O(1) standing lookups.
+    
+    Cache is populated by challenges/services.py on flag/hint events.
+    On a cold cache (first request after server start) we compute once
+    and then all subsequent reads are sub-millisecond Redis hits.
+    
+    History (score timeline) is NOT included here; use the /history/ endpoint.
     """
     from challenges.services import get_leaderboard_data, update_leaderboard_cache
 
     event = get_object_or_404(Event, id=event_id)
 
-    # ── Optimized Access Check ────────────────────────────────────────────────
-    access_cache_key = f"access:{event.id}:user:{request.user.id}"
-    access_data = cache.get(access_cache_key)
-    if access_data is None:
-        access = EventAccess.objects.filter(user=request.user, event=event).first()
-        if access:
-            access_data = {'reg': access.is_registered, 'ban': access.is_banned}
-            cache.set(access_cache_key, access_data, timeout=300) # 5 min cache
-        else:
-            access_data = {'reg': False, 'ban': False}
-
+    # Only registered, non-banned users may view the leaderboard.
+    access = EventAccess.objects.filter(user=request.user, event=event).first()
     is_privileged = is_admin(request, event_id=event.id)
     if not is_privileged:
-        if not access_data['reg'] or access_data['ban']:
+        if not access or not access.is_registered or access.is_banned:
             return JsonResponse({'error': 'Access denied'}, status=403)
 
-    # ── Fetch Payload ─────────────────────────────────────────────────────────
+    # ── Try Redis first ───────────────────────────────────────────────────────
     payload = get_leaderboard_data(event.id)
+
+    # Cold cache: compute now and warm it.
     if payload is None:
         payload = update_leaderboard_cache(event.id)
 
     if payload is None:
         return JsonResponse({'error': 'Leaderboard data unavailable'}, status=503)
 
-    # ── Migration: Handle Old Cache Format ────────────────────────────────────
+    # ── Scalability: Slice to Top 100 & Find My Standing ───────────────────────
+    full_board = payload.get('leaderboard', [])
     is_team_mode = payload.get('is_team_mode', False)
-    if is_team_mode and 'team_map' not in payload:
-        payload = update_leaderboard_cache(event.id)
-    elif not is_team_mode and 'user_map' not in payload:
-        payload = update_leaderboard_cache(event.id)
-
-    # ── O(1) Standing Lookup (Immune to Cache Corruption) ─────────────────────
+    my_encoded_id = encode_id(request.user.id)
     my_standing = None
-    if is_team_mode:
-        user_to_team = payload.get('user_to_team_map', {})
-        my_team_id = user_to_team.get(request.user.username)
-        if my_team_id:
-            # COPY the dict to prevent mutating the cached version
-            my_standing = copy.deepcopy(payload.get('team_map', {}).get(my_team_id))
-    else:
-        my_encoded_id = encode_id(request.user.id)
-        # COPY the dict
-        my_standing = copy.deepcopy(payload.get('user_map', {}).get(my_encoded_id))
+    
+    # Pre-calculate username for membership check if in team mode
+    username = request.user.username
 
-    if my_standing:
-        my_standing['is_me'] = True
-
-    # Fallback if user has no standing yet (e.g., zero solves or no team)
-    if not my_standing:
+    for entry in full_board:
+        is_me = False
         if is_team_mode:
-            my_standing = {
-                'id': 'none', # Safe ID for comparison
-                'name': 'No Team', 'rank': '-', 'points': 0, 'flags': 0,
-                'totalFlags': payload.get('event_total_challenges', 0), 'is_me': True
-            }
+            is_me = (username in entry.get('members', []))
         else:
-            my_standing = {
-                'id': encode_id(request.user.id),
+            is_me = (entry.get('id') == my_encoded_id)
+            
+        if is_me:
+            entry['is_me'] = True
+            my_standing = entry
+        else:
+            entry['is_me'] = False
+
+    # Return only top 100 to the client, but include personal standing separately
+    payload['leaderboard'] = full_board[:100]
+    payload['my_standing'] = my_standing
+
+    current_stats = my_standing
+    if not current_stats:
+        # User is registered but has zero solves — build a placeholder.
+        if event.is_team_mode:
+            current_stats = {'name': 'No Team', 'rank': '-', 'points': 0, 'flags': 0,
+                             'totalFlags': payload.get('event_total_challenges', 0)}
+        else:
+            current_stats = {
+                'id': my_encoded_id,
                 'username': request.user.username,
                 'rank': '-', 'points': 0, 'flags': 0,
                 'totalFlags': payload.get('event_total_challenges', 0),
                 'avatar': f'https://ui-avatars.com/api/?name={request.user.username}&background=random&color=fff',
-                'is_me': True
             }
 
-    # ── Build Response (Top 100) ──────────────────────────────────────────────
-    full_board = payload.get('leaderboard', [])
-    top_100 = []
-    my_id = my_standing.get('id')
-
-    for entry in full_board[:100]:
-        # We must copy each entry if we're going to modify 'is_me'
-        entry_copy = entry.copy()
-        entry_copy['is_me'] = (entry_copy['id'] == my_id)
-        top_100.append(entry_copy)
-
-    # Re-assemble response payload, preserving all original keys (like top_history)
-    # but overwriting the leaderboard with our sliced/safe version.
-    response_payload = {**payload}
-    response_payload.update({
-        'leaderboard': top_100,
-        'my_standing': my_standing
-    })
-    
-    # Remove large lookup maps from the HTTP response to save bandwidth
-    response_payload.pop('user_map', None)
-    response_payload.pop('team_map', None)
-    response_payload.pop('user_to_team_map', None)
-
-    response_key = 'current_team_stats' if is_team_mode else 'current_user_stats'
-    response_payload[response_key] = my_standing
-    
-    return JsonResponse(response_payload)
+    response_key = 'current_team_stats' if event.is_team_mode else 'current_user_stats'
+    return JsonResponse({**payload, response_key: current_stats})
 
 
 @login_required
