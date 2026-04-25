@@ -1032,6 +1032,12 @@ def admin_import_users_api(request):
 
             EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
+            # Fast PBKDF2 hasher — 100k iterations (7x faster than Django’s 720k default).
+            # Acceptable for temporary event credentials that users should change after login.
+            from django.contrib.auth.hashers import PBKDF2PasswordHasher
+            _hasher = PBKDF2PasswordHasher()
+            _hasher.iterations = 100_000
+
             users_to_create  = []   # User ORM objects (not yet saved)
             credentials_log  = []   # plain-text passwords for the output Excel
 
@@ -1060,7 +1066,7 @@ def admin_import_users_api(request):
 
                 users_to_create.append(User(
                     username   = username,
-                    password   = make_password(password),   # hash upfront
+                    password   = _hasher.encode(password, _hasher.salt()),
                     first_name = first_name,
                     last_name  = last_name,
                     email      = email,

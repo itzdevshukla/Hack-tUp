@@ -142,8 +142,19 @@ function AdminUsers() {
             });
 
             if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || "Import failed");
+                let errorMsg = `Server error (${res.status})`;
+                try {
+                    const contentType = res.headers.get('content-type') || '';
+                    if (contentType.includes('application/json')) {
+                        const errorData = await res.json();
+                        errorMsg = errorData.error || errorMsg;
+                    } else if (res.status === 504 || res.status === 502) {
+                        errorMsg = "Server timed out while importing. Please try with a smaller file or contact the admin.";
+                    } else {
+                        errorMsg = `Import failed with status ${res.status}. Please try again.`;
+                    }
+                } catch (_) { /* keep default errorMsg */ }
+                throw new Error(errorMsg);
             }
 
             // Download the returned excel file
