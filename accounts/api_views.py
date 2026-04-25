@@ -20,7 +20,7 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
-@ratelimit(key='ip', rate='5/m', block=False)
+@ratelimit(key='ip', rate='20/m', block=False)
 @require_POST
 def login_api(request):
     if getattr(request, 'limited', False):
