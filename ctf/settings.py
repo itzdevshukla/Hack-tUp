@@ -48,6 +48,9 @@ CSRF_TRUSTED_ORIGINS = [
     "https://www.hackitupnow.tech",
 ]
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True  # Render ke proxy ke peeche real client IP use karo
+USE_X_FORWARDED_PORT = True
+IPWARE_META_PRECEDENCE_ORDER = ('HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR')  # django-ratelimit real IP pick kare
 
 
 # Application definition
