@@ -996,8 +996,10 @@ def admin_import_users_api(request):
             ws = wb.active
 
             # Prepare Output Excel
+            from io import BytesIO
             out_wb = openpyxl.Workbook()
             out_ws = out_wb.active
+            out_ws.title = "Credentials"
             out_ws.append(["Name", "Email", "Username", "Password", "Status"])
 
             event_obj = None
@@ -1069,13 +1071,17 @@ def admin_import_users_api(request):
 
                 out_ws.append([full_name, email, username, password, status])
 
-            # Prepare Response
+            # Prepare Response — save to BytesIO first to avoid streaming issues
+            buffer = BytesIO()
+            out_wb.save(buffer)
+            buffer.seek(0)
+
             response = HttpResponse(
+                buffer.getvalue(),
                 content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
-            response['Content-Disposition'] = 'attachment; filename="generated_credentials.xlsx"'
+            response['Content-Disposition'] = f'attachment; filename="credentials_{created_count}_users.xlsx"'
             response['Access-Control-Expose-Headers'] = 'Content-Disposition'
-            out_wb.save(response)
             return response
 
         except Exception as e:
