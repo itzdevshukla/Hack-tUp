@@ -278,8 +278,8 @@ function AdminUsers() {
                         </div>
                         <div className="admin-modal-body">
                             <p className="admin-modal-desc">
-                                Upload an Excel file (.xlsx) with columns: <strong>First Name, Last Name, Email</strong>. <br />
-                                Credentials will be generated automatically and you will receive an updated file to download.
+                                Upload an Excel file (.xlsx) with columns: <strong>Name, Email</strong>. <br />
+                                Username is auto-generated from the full name. Credentials will be downloaded after import.
                             </p>
                             <form onSubmit={handleImportSubmit} className="admin-import-form">
                                 <div className="admin-form-group">

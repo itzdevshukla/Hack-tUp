@@ -998,7 +998,7 @@ def admin_import_users_api(request):
             # Prepare Output Excel
             out_wb = openpyxl.Workbook()
             out_ws = out_wb.active
-            out_ws.append(["First Name", "Last Name", "Email", "Username", "Password", "Status"])
+            out_ws.append(["Name", "Email", "Username", "Password", "Status"])
 
             event_obj = None
             if event_id and event_id != '' and event_id != 'None':
@@ -1013,20 +1013,21 @@ def admin_import_users_api(request):
                 if not row or not row[0]: # Skip empty rows
                     continue
                 
-                first_name = str(row[0]).strip()
-                last_name = str(row[1]).strip() if len(row) > 1 and row[1] else ""
-                email = str(row[2]).strip() if len(row) > 2 and row[2] else ""
+                # New format: col A = Full Name, col B = Email
+                full_name = str(row[0]).strip()
+                email = str(row[1]).strip() if len(row) > 1 and row[1] else ""
 
-                # GENERATE CREDENTIALS
-                safe_first = "".join(filter(str.isalnum, first_name)).lower()
-                safe_last = "".join(filter(str.isalnum, last_name)).lower()
-                
-                base_username = f"{safe_first}.{safe_last}"
-                if not base_username or base_username == ".":
-                    base_username = "user"
+                # Split full name into first/last for Django's User model
+                name_parts = full_name.split()
+                first_name = name_parts[0] if name_parts else full_name
+                last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
+
+                # GENERATE USERNAME from full name (e.g. "Dev Shukla" → "devshukla")
+                safe_name = "".join(filter(str.isalnum, full_name)).lower()
+                base_username = safe_name if safe_name else "user"
                 username = base_username
-                
-                # Unique Username Logic
+
+                # Unique Username Logic — append counter if taken
                 counter = 1
                 while User.objects.filter(username=username).exists():
                     username = f"{base_username}_{counter}"
@@ -1051,14 +1052,14 @@ def admin_import_users_api(request):
                     # Grant Event Access
                     if event_obj:
                         access, _ = EventAccess.objects.get_or_create(
-                            user=user, 
+                            user=user,
                             event=event_obj,
                             defaults={'is_registered': True}
                         )
                         if not access.is_registered:
                             access.is_registered = True
                             access.save()
-                            
+
                         status += " + Event Access"
 
                 except Exception as e:
@@ -1066,7 +1067,7 @@ def admin_import_users_api(request):
                     username = "N/A"
                     password = "N/A"
 
-                out_ws.append([first_name, last_name, email, username, password, status])
+                out_ws.append([full_name, email, username, password, status])
 
             # Prepare Response
             response = HttpResponse(
