@@ -982,115 +982,153 @@ def admin_import_users_api(request):
     if not is_admin(request):
         return JsonResponse({"error": "Forbidden"}, status=403)
 
-
     if request.method == "POST":
+        from io import BytesIO
+        from django.db import transaction
+        from django.contrib.auth.hashers import make_password
+        import re
+
         try:
             excel_file = request.FILES.get("file")
             event_id = request.POST.get("event_id")
-            
+
             if not excel_file:
                 return JsonResponse({"error": "No file uploaded"}, status=400)
 
-            # Load Workbook
-            wb = openpyxl.load_workbook(excel_file)
+            # ── Security: file type ──────────────────────────────────────────
+            if not excel_file.name.lower().endswith('.xlsx'):
+                return JsonResponse({"error": "Only .xlsx files are allowed"}, status=400)
+
+            # ── Security: file size limit (5 MB) ────────────────────────────
+            MAX_FILE_SIZE = 5 * 1024 * 1024
+            if excel_file.size > MAX_FILE_SIZE:
+                return JsonResponse({"error": "File too large. Maximum allowed size is 5 MB"}, status=400)
+
+            # ── Load workbook (read-only for speed) ─────────────────────────
+            wb = openpyxl.load_workbook(excel_file, read_only=True, data_only=True)
             ws = wb.active
 
-            # Prepare Output Excel
-            from io import BytesIO
-            out_wb = openpyxl.Workbook()
-            out_ws = out_wb.active
-            out_ws.title = "Credentials"
-            out_ws.append(["Name", "Email", "Username", "Password", "Status"])
+            # ── Security: row count cap ──────────────────────────────────────
+            MAX_ROWS = 1200
+            raw_rows = [r for r in ws.iter_rows(min_row=2, values_only=True) if r and r[0]]
+            if len(raw_rows) > MAX_ROWS:
+                return JsonResponse({"error": f"Too many rows. Maximum allowed is {MAX_ROWS}"}, status=400)
 
+            # ── Resolve event ────────────────────────────────────────────────
             event_obj = None
-            if event_id and event_id != '' and event_id != 'None':
+            if event_id and event_id not in ('', 'None'):
                 decoded_event_id = decode_id(event_id)
-                if decoded_event_id is None:
+                if not decoded_event_id:
                     return JsonResponse({"error": "Invalid event ID"}, status=400)
-                event_obj = Event.objects.get(id=decoded_event_id)
-
-            created_count = 0
-            # Iterate Rows (Skip Header)
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                if not row or not row[0]: # Skip empty rows
-                    continue
-                
-                # New format: col A = Full Name, col B = Email
-                full_name = str(row[0]).strip()
-                email = str(row[1]).strip() if len(row) > 1 and row[1] else ""
-
-                # Split full name into first/last for Django's User model
-                name_parts = full_name.split()
-                first_name = name_parts[0] if name_parts else full_name
-                last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
-
-                # GENERATE USERNAME from full name (e.g. "Dev Shukla" → "devshukla")
-                safe_name = "".join(filter(str.isalnum, full_name)).lower()
-                base_username = safe_name if safe_name else "user"
-                username = base_username
-
-                # Unique Username Logic — append counter if taken
-                counter = 1
-                while User.objects.filter(username=username).exists():
-                    username = f"{base_username}_{counter}"
-                    counter += 1
-
-                # Random Password
-                alphabet = string.ascii_letters + string.digits
-                password = ''.join(secrets.choice(alphabet) for i in range(10))
-
-                # Create User
                 try:
-                    user = User.objects.create_user(
-                        username=username,
-                        password=password,
-                        first_name=first_name,
-                        last_name=last_name,
-                        email=email
+                    event_obj = Event.objects.get(id=decoded_event_id)
+                except Event.DoesNotExist:
+                    return JsonResponse({"error": "Event not found"}, status=404)
+
+            # ── Pre-fetch ALL existing usernames in one query ────────────────
+            # This replaces the per-row  User.objects.filter(username=…).exists()
+            # call that caused 2500+ DB round-trips for 850 users.
+            existing_usernames = set(User.objects.values_list('username', flat=True))
+
+            EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+            users_to_create  = []   # User ORM objects (not yet saved)
+            credentials_log  = []   # plain-text passwords for the output Excel
+
+            for row in raw_rows:
+                full_name  = re.sub(r'[^\w\s\-\.]', '', str(row[0])).strip()[:150]
+                email_raw  = str(row[1]).strip() if len(row) > 1 and row[1] else ""
+                email      = email_raw[:254] if EMAIL_RE.match(email_raw) else ""
+
+                name_parts = full_name.split()
+                first_name = name_parts[0][:150] if name_parts else "User"
+                last_name  = " ".join(name_parts[1:])[:150] if len(name_parts) > 1 else ""
+
+                # Unique username — collision-safe against in-memory set
+                base_username = "".join(filter(str.isalnum, full_name)).lower()[:28] or "user"
+                username      = base_username
+                counter       = 1
+                while username in existing_usernames:
+                    suffix   = f"_{counter}"
+                    username = base_username[:30 - len(suffix)] + suffix
+                    counter += 1
+                existing_usernames.add(username)   # reserve immediately
+
+                # 12-char cryptographically random password
+                alphabet = string.ascii_letters + string.digits
+                password = ''.join(secrets.choice(alphabet) for _ in range(12))
+
+                users_to_create.append(User(
+                    username   = username,
+                    password   = make_password(password),   # hash upfront
+                    first_name = first_name,
+                    last_name  = last_name,
+                    email      = email,
+                    is_active  = True,
+                ))
+                credentials_log.append({
+                    "full_name": str(row[0]).strip(),
+                    "email":     email,
+                    "username":  username,
+                    "password":  password,
+                })
+
+            # ── Atomic block: ALL-or-NOTHING ─────────────────────────────────
+            # If Excel generation crashes, the transaction rolls back and NO
+            # users land in the DB — they never existed.
+            with transaction.atomic():
+                # One bulk INSERT for all users (single DB call)
+                created_users = User.objects.bulk_create(users_to_create, batch_size=250)
+
+                # Bulk-grant event access
+                if event_obj and created_users:
+                    EventAccess.objects.bulk_create(
+                        [EventAccess(user=u, event=event_obj, is_registered=True)
+                         for u in created_users],
+                        batch_size=250,
+                        ignore_conflicts=True,
                     )
-                    created_count += 1
-                    status = "Created"
 
-                    # Grant Event Access
-                    if event_obj:
-                        access, _ = EventAccess.objects.get_or_create(
-                            user=user,
-                            event=event_obj,
-                            defaults={'is_registered': True}
-                        )
-                        if not access.is_registered:
-                            access.is_registered = True
-                            access.save()
+                # Build the output Excel INSIDE the transaction.
+                # Any exception here rolls back every user insert above.
+                out_wb = openpyxl.Workbook()
+                out_ws = out_wb.active
+                out_ws.title = "Credentials"
+                out_ws.append(["Name", "Email", "Username", "Password", "Status"])
 
-                        status += " + Event Access"
+                event_suffix = " + Event Access" if event_obj else ""
+                for cred in credentials_log:
+                    out_ws.append([
+                        cred["full_name"],
+                        cred["email"],
+                        cred["username"],
+                        cred["password"],
+                        f"Created{event_suffix}",
+                    ])
 
-                except Exception as e:
-                    status = f"Error: {str(e)}"
-                    username = "N/A"
-                    password = "N/A"
+                buffer = BytesIO()
+                out_wb.save(buffer)
+                excel_bytes = buffer.getvalue()   # capture before transaction closes
 
-                out_ws.append([full_name, email, username, password, status])
-
-            # Prepare Response — save to BytesIO first to avoid streaming issues
-            buffer = BytesIO()
-            out_wb.save(buffer)
-            buffer.seek(0)
-
+            # ── Return the file (transaction already committed) ──────────────
             response = HttpResponse(
-                buffer.getvalue(),
-                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                excel_bytes,
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             )
-            response['Content-Disposition'] = f'attachment; filename="credentials_{created_count}_users.xlsx"'
+            response['Content-Disposition'] = (
+                f'attachment; filename="credentials_{len(created_users)}_users.xlsx"'
+            )
             response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+            logger.info("Imported %d users successfully (event=%s)", len(created_users), event_obj)
             return response
 
         except Exception as e:
+            logger.exception("admin_import_users_api failed")
             return JsonResponse({"error": f"Import failed: {str(e)}"}, status=500)
 
-    # GET Request: Generate active events for modal dropdown
+    # GET — populate event dropdown
     events = Event.objects.filter(status__in=['upcoming', 'live']).order_by('-created_at')
-    events_data = [{"id": encode_id(e.id), "name": e.event_name} for e in events]
-    return JsonResponse({"events": events_data})
+    return JsonResponse({"events": [{"id": encode_id(e.id), "name": e.event_name} for e in events]})
 
 @login_required
 def admin_event_teams_api(request, event_id):
