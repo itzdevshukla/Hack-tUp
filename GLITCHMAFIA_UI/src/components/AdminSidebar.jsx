@@ -317,46 +317,46 @@ function AdminSidebar({ isOpen, setIsOpen }) {
                                     {eventObj.is_hidden ? (
                                         <button
                                             onClick={() => confirmEventAction('toggle_hidden', 'make the event public')}
-                                            disabled={actionLoading || eventObj.status === 'completed'}
+                                            disabled={actionLoading}
                                             style={{
                                                 width: '100%', padding: '10px 12px',
-                                                background: eventObj.status === 'completed' ? '#333' : '#f8f9fa',
-                                                border: eventObj.status === 'completed' ? '1px solid #444' : '1px solid #e9ecef',
-                                                color: eventObj.status === 'completed' ? '#666' : '#111',
+                                                background: '#f8f9fa',
+                                                border: '1px solid #e9ecef',
+                                                color: '#111',
                                                 borderRadius: '6px',
-                                                cursor: eventObj.status === 'completed' || actionLoading ? 'not-allowed' : 'pointer',
+                                                cursor: actionLoading ? 'not-allowed' : 'pointer',
                                                 opacity: actionLoading ? 0.5 : 1,
                                                 textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9rem', fontWeight: 'bold',
                                                 transition: 'all 0.2s ease',
-                                                boxShadow: eventObj.status === 'completed' ? 'none' : '0 2px 4px rgba(0,0,0,0.1)',
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                                                 marginTop: '5px'
                                             }}
-                                            onMouseEnter={e => { if (eventObj.status !== 'completed' && !actionLoading) e.currentTarget.style.background = '#e2e6ea'; }}
-                                            onMouseLeave={e => { if (eventObj.status !== 'completed' && !actionLoading) e.currentTarget.style.background = '#f8f9fa'; }}
+                                            onMouseEnter={e => { if (!actionLoading) e.currentTarget.style.background = '#e2e6ea'; }}
+                                            onMouseLeave={e => { if (!actionLoading) e.currentTarget.style.background = '#f8f9fa'; }}
                                         >
-                                            <FaEye style={{ color: eventObj.status === 'completed' ? '#555' : '#007bff' }} /> Make Public
+                                            <FaEye style={{ color: '#007bff' }} /> Make Public
                                         </button>
                                     ) : (
                                         <button
                                             onClick={() => confirmEventAction('toggle_hidden', 'make the event hidden')}
-                                            disabled={actionLoading || eventObj.status === 'completed'}
+                                            disabled={actionLoading}
                                             style={{
                                                 width: '100%', padding: '10px 12px',
-                                                background: eventObj.status === 'completed' ? '#333' : '#6c757d',
+                                                background: '#6c757d',
                                                 border: 'none',
-                                                color: eventObj.status === 'completed' ? '#666' : '#fff',
+                                                color: '#fff',
                                                 borderRadius: '6px',
-                                                cursor: eventObj.status === 'completed' || actionLoading ? 'not-allowed' : 'pointer',
+                                                cursor: actionLoading ? 'not-allowed' : 'pointer',
                                                 opacity: actionLoading ? 0.5 : 1,
                                                 textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9rem', fontWeight: 'bold',
                                                 transition: 'all 0.2s ease',
-                                                boxShadow: eventObj.status === 'completed' ? 'none' : '0 4px 6px rgba(108,117,125,0.3)',
+                                                boxShadow: '0 4px 6px rgba(108,117,125,0.3)',
                                                 marginTop: '5px'
                                             }}
-                                            onMouseEnter={e => { if (eventObj.status !== 'completed' && !actionLoading) { e.currentTarget.style.background = '#5a6268'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(108,117,125,0.5)'; } }}
-                                            onMouseLeave={e => { if (eventObj.status !== 'completed' && !actionLoading) { e.currentTarget.style.background = '#6c757d'; e.currentTarget.style.boxShadow = '0 4px 6px rgba(108,117,125,0.3)'; } }}
+                                            onMouseEnter={e => { if (!actionLoading) { e.currentTarget.style.background = '#5a6268'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(108,117,125,0.5)'; } }}
+                                            onMouseLeave={e => { if (!actionLoading) { e.currentTarget.style.background = '#6c757d'; e.currentTarget.style.boxShadow = '0 4px 6px rgba(108,117,125,0.3)'; } }}
                                         >
-                                            <FaEyeSlash style={{ color: eventObj.status === 'completed' ? '#555' : 'inherit' }} /> Make Hidden
+                                            <FaEyeSlash style={{ color: 'inherit' }} /> Make Hidden
                                         </button>
                                     )}
 
