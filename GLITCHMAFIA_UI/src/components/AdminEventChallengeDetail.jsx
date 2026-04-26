@@ -91,6 +91,7 @@ function AdminEventChallengeDetail() {
             submitData.append('flag_format', formData.flag_format);
             submitData.append('url', formData.url);
             submitData.append('hints', JSON.stringify(formData.hints));
+            submitData.append('wave_id', formData.wave_id);
             if (formData.flag) {
                 submitData.append('flag', formData.flag);
             }
