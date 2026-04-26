@@ -20,7 +20,8 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
-# @ratelimit(key='ip', rate='20/m', block=False)
+@ratelimit(key='ip', rate='5/m', block=False)
+@ratelimit(key='post:username', rate='10/m', block=False)
 @require_POST
 def login_api(request):
     if getattr(request, 'limited', False):
@@ -240,9 +241,12 @@ def user_status_api(request):
         'user': None
     })
 
+@ratelimit(key='ip', rate='5/m', block=False)
 @require_POST
 @login_required
 def change_password_api(request):
+    if getattr(request, 'limited', False):
+        return JsonResponse({'success': False, 'message': 'Too many attempts. Please try again later.'}, status=429)
     import json
     from django.contrib.auth import update_session_auth_hash
     
@@ -275,9 +279,12 @@ def change_password_api(request):
         return JsonResponse({'success': False, 'message': 'An unexpected error occurred.'}, status=500)
 
 
+@ratelimit(key='ip', rate='5/m', block=False)
 @require_POST
 @login_required
 def delete_account_api(request):
+    if getattr(request, 'limited', False):
+        return JsonResponse({'success': False, 'message': 'Too many attempts. Please try again later.'}, status=429)
     import json
     try:
         data = json.loads(request.body)

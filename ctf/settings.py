@@ -84,6 +84,7 @@ DEFAULT_FROM_EMAIL = 'noreply@hackitupnow.tech'
 
 
 MIDDLEWARE = [
+    'ctf.middleware.RealIPMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

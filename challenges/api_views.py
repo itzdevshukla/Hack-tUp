@@ -228,6 +228,9 @@ def unlock_hint_api(request, hint_id):
             
         if current_status != 'live':
             return JsonResponse({'error': f'Event is currently {current_status}. Hint unlocks are closed.'}, status=403)
+            
+        if getattr(event, 'challenges_locked', False):
+            return JsonResponse({'error': 'Challenges are currently locked by the administrator.'}, status=403)
 
     if event.is_team_mode:
         from teams.models import TeamMember, TeamHint, Team
@@ -290,6 +293,8 @@ def submit_flag_api(request, challenge_id):
     if not is_privileged_admin:
         if not access or not access.is_registered or access.is_banned:
             return JsonResponse({'error': 'Access denied'}, status=403)
+        if getattr(event, 'challenges_locked', False):
+            return JsonResponse({'error': 'Challenges are currently locked by the administrator.'}, status=403)
     elif access and access.is_banned:
         return JsonResponse({'error': 'Access denied (banned)'}, status=403)
         
@@ -605,8 +610,15 @@ def challenge_solvers_api(request, challenge_id):
     event = challenge.event
     
     access = EventAccess.objects.filter(user=request.user, event=event).first()
-    if not access or not access.is_registered or access.is_banned:
-        return JsonResponse({'error': 'Access denied'}, status=403)
+    is_privileged_admin = is_admin(request, event_id=event.id)
+    
+    if not is_privileged_admin:
+        if not access or not access.is_registered or access.is_banned:
+            return JsonResponse({'error': 'Access denied'}, status=403)
+        if getattr(event, 'challenges_locked', False):
+            return JsonResponse({'error': 'Challenges are currently locked by the administrator.'}, status=403)
+    elif access and access.is_banned:
+        return JsonResponse({'error': 'Access denied (banned)'}, status=403)
         
     if challenge.wave and not challenge.wave.is_active:
         return JsonResponse({'error': 'Access denied: Challenge wave is not active.'}, status=403)
