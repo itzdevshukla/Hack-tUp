@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('administration', '0001_initial'),
-        ('challenges', '0010_announcement_type'),
+        ('challenges', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
