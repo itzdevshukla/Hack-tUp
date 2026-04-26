@@ -44,6 +44,7 @@ redis>=4.5.0
 # Security & Rate Limiting
 # ------------------------------------
 django-ratelimit
+django-ipware
 
 # ------------------------------------
 # Auth & MFA (Email OTP, TOTP)

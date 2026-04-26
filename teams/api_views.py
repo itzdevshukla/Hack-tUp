@@ -151,31 +151,36 @@ def create_team_api(request, event_id):
     if not access:
         return JsonResponse({"error": "You must be registered for this event first."}, status=403)
 
-    if access.is_banned:
-        return JsonResponse({"error": "You are banned from this event."}, status=403)
+    from django.db import transaction
+    with transaction.atomic():
+        # Lock this user's registration status for this event
+        access = EventAccess.objects.select_for_update().get(user=request.user, event=event)
 
-    if _get_user_team(request.user, event):
-        return JsonResponse({"error": "You are already in a team for this event."}, status=400)
+        if access.is_banned:
+            return JsonResponse({"error": "You are banned from this event."}, status=403)
 
-    try:
-        body = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON body."}, status=400)
+        if _get_user_team(request.user, event):
+            return JsonResponse({"error": "You are already in a team for this event."}, status=400)
 
-    team_name = (body.get("name") or "").strip()
-    if not team_name:
-        return JsonResponse({"error": "Team name is required."}, status=400)
-    if len(team_name) > 100:
-        return JsonResponse({"error": "Team name is too long (max 100 chars)."}, status=400)
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON body."}, status=400)
 
-    if Team.objects.filter(event=event, name__iexact=team_name).exists():
-        return JsonResponse({"error": "A team with this name already exists for this event."}, status=400)
+        team_name = (body.get("name") or "").strip()
+        if not team_name:
+            return JsonResponse({"error": "Team name is required."}, status=400)
+        if len(team_name) > 100:
+            return JsonResponse({"error": "Team name is too long (max 100 chars)."}, status=400)
 
-    team = Team.objects.create(event=event, name=team_name, captain=request.user)
-    # Captain auto-joins as a member (no approval needed)
-    TeamMember.objects.create(team=team, user=request.user)
+        if Team.objects.filter(event=event, name__iexact=team_name).exists():
+            return JsonResponse({"error": "A team with this name already exists for this event."}, status=400)
 
-    return JsonResponse({"success": True, "team": _serialize_team(team, request.user)}, status=201)
+        team = Team.objects.create(event=event, name=team_name, captain=request.user)
+        # Captain auto-joins as a member (no approval needed)
+        TeamMember.objects.create(team=team, user=request.user)
+
+        return JsonResponse({"success": True, "team": _serialize_team(team, request.user)}, status=201)
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -195,48 +200,53 @@ def join_team_api(request, event_id):
     if not access:
         return JsonResponse({"error": "You must be registered for this event first."}, status=403)
 
-    if access.is_banned:
-        return JsonResponse({"error": "You are banned from this event."}, status=403)
+    from django.db import transaction
+    with transaction.atomic():
+        # Lock this user's registration status for this event
+        access = EventAccess.objects.select_for_update().get(user=request.user, event=event)
 
-    if _get_user_team(request.user, event):
-        return JsonResponse({"error": "You are already in a team for this event."}, status=400)
+        if access.is_banned:
+            return JsonResponse({"error": "You are banned from this event."}, status=403)
 
-    # Check for an active pending request
-    existing = TeamJoinRequest.objects.filter(user=request.user, team__event=event, status='pending').first()
-    if existing:
-        return JsonResponse({"error": "You already have a pending join request. Please wait for the captain to respond."}, status=400)
+        if _get_user_team(request.user, event):
+            return JsonResponse({"error": "You are already in a team for this event."}, status=400)
 
-    try:
-        body = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON body."}, status=400)
+        # Check for an active pending request
+        existing = TeamJoinRequest.objects.filter(user=request.user, team__event=event, status='pending').first()
+        if existing:
+            return JsonResponse({"error": "You already have a pending join request. Please wait for the captain to respond."}, status=400)
 
-    invite_code = (body.get("invite_code") or "").strip()
-    if not invite_code:
-        return JsonResponse({"error": "invite_code is required."}, status=400)
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON body."}, status=400)
 
-    team = Team.objects.filter(event=event, invite_code=invite_code).first()
-    if not team:
-        return JsonResponse({"error": "Invalid invite code. Please check and try again."}, status=404)
+        invite_code = (body.get("invite_code") or "").strip()
+        if not invite_code:
+            return JsonResponse({"error": "invite_code is required."}, status=400)
 
-    if team.members.count() >= event.max_team_size:
-        return JsonResponse({"error": f"This team is full ({event.max_team_size} members max)."}, status=400)
+        team = Team.objects.filter(event=event, invite_code=invite_code).first()
+        if not team:
+            return JsonResponse({"error": "Invalid invite code. Please check and try again."}, status=404)
 
-    # Create or reactivate a join request (handles re-request after rejection)
-    req, created = TeamJoinRequest.objects.update_or_create(
-        team=team, user=request.user,
-        defaults={'status': 'pending'}
-    )
+        if team.members.count() >= event.max_team_size:
+            return JsonResponse({"error": f"This team is full ({event.max_team_size} members max)."}, status=400)
 
-    return JsonResponse({
-        "success": True,
-        "pending": True,
-        "request": {
-            "id": encode_id(req.id),
-            "team_name": team.name,
-            "created_at": req.created_at.isoformat(),
-        }
-    })
+        # Create or reactivate a join request (handles re-request after rejection)
+        req, created = TeamJoinRequest.objects.update_or_create(
+            team=team, user=request.user,
+            defaults={'status': 'pending'}
+        )
+
+        return JsonResponse({
+            "success": True,
+            "pending": True,
+            "request": {
+                "id": encode_id(req.id),
+                "team_name": team.name,
+                "created_at": req.created_at.isoformat(),
+            }
+        })
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -289,11 +299,26 @@ def handle_join_request_api(request, team_id, request_id):
             return JsonResponse({"error": "action must be 'approve' or 'reject'."}, status=400)
 
         if action == "approve":
+            # ── CONCURRENCY LOCK ─────────────────────────────────────────────
+            # Lock the target user's event access to prevent them from being
+            # approved into another team simultaneously.
+            target_access = EventAccess.objects.select_for_update().filter(
+                user=join_request.user, 
+                event=team.event
+            ).first()
+            
+            # Check if user is already in a team for this event
+            if _get_user_team(join_request.user, team.event):
+                join_request.status = 'cancelled'
+                join_request.save(update_fields=['status', 'updated_at'])
+                return JsonResponse({"error": "This user is already in another team. The request has been cancelled."}, status=400)
+
             # Check capacity
             event = team.event
             if team.members.count() >= event.max_team_size:
                 return JsonResponse({"error": f"Team is full ({event.max_team_size} members max)."}, status=400)
-            # Check not already a member
+            
+            # Final verification
             if TeamMember.objects.filter(team=team, user=join_request.user).exists():
                 join_request.status = 'approved'
                 join_request.save(update_fields=['status', 'updated_at'])
@@ -302,6 +327,14 @@ def handle_join_request_api(request, team_id, request_id):
             TeamMember.objects.create(team=team, user=join_request.user)
             join_request.status = 'approved'
             join_request.save(update_fields=['status', 'updated_at'])
+            
+            # Invalidate other pending requests for this user in this event
+            TeamJoinRequest.objects.filter(
+                user=join_request.user, 
+                team__event=team.event, 
+                status='pending'
+            ).exclude(id=join_request.id).update(status='cancelled')
+
             return JsonResponse({"success": True, "action": "approve", "username": join_request.user.username})
 
         else:  # reject
