@@ -318,7 +318,7 @@ function AdminEventParticipants() {
                                 <td>{p.joined_at || '-'}</td>
                                 <td>
                                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                        <Link to={`/administration/event/${id}/participant/${p.id}`} className="admin-btn-view">View Profile</Link>
+                                        <Link to={`/administration/event/${id}/user/${p.id}?from=participants`} className="admin-btn-view">View Profile</Link>
                                         <button
                                             className={p.is_banned ? "admin-btn-unban" : "admin-btn-ban"}
                                             onClick={() => openBanModal(p, p.is_banned)}

@@ -14,7 +14,6 @@ import AdminEventTeams from './AdminEventTeams';
 import AdminEventLeaderboard from './AdminEventLeaderboard';
 import AdminEventLiveSubmissions from './AdminEventLiveSubmissions';
 import AdminEventUserDetail from './AdminEventUserDetail';
-import AdminParticipantProfile from './AdminParticipantProfile';
 import AdminEventChallenges from './AdminEventChallenges';
 import AdminEventChallengeDetail from './AdminEventChallengeDetail';
 import AdminEventChallengeCreate from './AdminEventChallengeCreate';
@@ -96,7 +95,6 @@ function AdminDashboard() {
                     <Route path="/event/:id/leaderboard" element={<AdminEventLeaderboard />} />
                     <Route path="/event/:id/submissions" element={<AdminEventLiveSubmissions />} />
                     <Route path="/event/:id/user/:userId" element={<AdminEventUserDetail />} />
-                    <Route path="/event/:id/participant/:userId" element={<AdminParticipantProfile />} />
                     <Route path="/event/:id/test-challenges" element={<AdminTestChallenges />} />
                     <Route path="/event/:id/announcements" element={<AdminAnnouncements />} />
                     <Route path="*" element={<NotFound />} />
