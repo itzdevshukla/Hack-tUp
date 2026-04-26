@@ -61,6 +61,7 @@ class Event(models.Model):
     is_rejected = models.BooleanField(default=False)
     accepting_writeups = models.BooleanField(default=False)
     is_hidden = models.BooleanField(default=False, help_text="Hide event from non-registered users")
+    challenges_locked = models.BooleanField(default=False, help_text="Lock all challenges, making them invisible to participants")
 
     # ===============================
     # TEAM MODE

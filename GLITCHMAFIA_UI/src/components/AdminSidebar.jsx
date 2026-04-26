@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import CustomAlert from './CustomAlert';
-import { FaChartBar, FaUsers, FaBullseye, FaArrowLeft, FaSignOutAlt, FaBars, FaPlusCircle, FaEye, FaEyeSlash, FaTrophy, FaEdit, FaPlay, FaPause, FaStop, FaCode, FaWater, FaUserShield, FaFlask, FaGavel, FaBullhorn } from 'react-icons/fa';
+import { FaChartBar, FaUsers, FaBullseye, FaArrowLeft, FaSignOutAlt, FaBars, FaPlusCircle, FaEye, FaEyeSlash, FaLock, FaUnlock, FaTrophy, FaEdit, FaPlay, FaPause, FaStop, FaCode, FaWater, FaUserShield, FaFlask, FaGavel, FaBullhorn } from 'react-icons/fa';
 import { getCsrfToken } from '../utils/csrf';
 
 function AdminSidebar({ isOpen, setIsOpen }) {
@@ -357,6 +357,52 @@ function AdminSidebar({ isOpen, setIsOpen }) {
                                             onMouseLeave={e => { if (!actionLoading) { e.currentTarget.style.background = '#6c757d'; e.currentTarget.style.boxShadow = '0 4px 6px rgba(108,117,125,0.3)'; } }}
                                         >
                                             <FaEyeSlash style={{ color: 'inherit' }} /> Make Hidden
+                                        </button>
+                                    )}
+
+                                    {eventObj.challenges_locked ? (
+                                        <button
+                                            onClick={() => confirmEventAction('toggle_lock_challenges', 'unlock all challenges')}
+                                            disabled={actionLoading}
+                                            style={{
+                                                width: '100%', padding: '10px 12px',
+                                                background: '#f8f9fa',
+                                                border: '1px solid #e9ecef',
+                                                color: '#111',
+                                                borderRadius: '6px',
+                                                cursor: actionLoading ? 'not-allowed' : 'pointer',
+                                                opacity: actionLoading ? 0.5 : 1,
+                                                textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9rem', fontWeight: 'bold',
+                                                transition: 'all 0.2s ease',
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                                marginTop: '5px'
+                                            }}
+                                            onMouseEnter={e => { if (!actionLoading) e.currentTarget.style.background = '#e2e6ea'; }}
+                                            onMouseLeave={e => { if (!actionLoading) e.currentTarget.style.background = '#f8f9fa'; }}
+                                        >
+                                            <FaUnlock style={{ color: '#28a745' }} /> Unlock Challenges
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => confirmEventAction('toggle_lock_challenges', 'lock all challenges')}
+                                            disabled={actionLoading}
+                                            style={{
+                                                width: '100%', padding: '10px 12px',
+                                                background: '#ffc107',
+                                                border: 'none',
+                                                color: '#111',
+                                                borderRadius: '6px',
+                                                cursor: actionLoading ? 'not-allowed' : 'pointer',
+                                                opacity: actionLoading ? 0.5 : 1,
+                                                textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9rem', fontWeight: 'bold',
+                                                transition: 'all 0.2s ease',
+                                                boxShadow: '0 4px 6px rgba(255,193,7,0.3)',
+                                                marginTop: '5px'
+                                            }}
+                                            onMouseEnter={e => { if (!actionLoading) { e.currentTarget.style.background = '#e0a800'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(255,193,7,0.5)'; } }}
+                                            onMouseLeave={e => { if (!actionLoading) { e.currentTarget.style.background = '#ffc107'; e.currentTarget.style.boxShadow = '0 4px 6px rgba(255,193,7,0.3)'; } }}
+                                        >
+                                            <FaLock style={{ color: 'inherit' }} /> Lock Challenges
                                         </button>
                                     )}
 

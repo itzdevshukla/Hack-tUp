@@ -487,6 +487,12 @@ def admin_event_control_api(request, event_id):
                 event.save()
                 status = "hidden" if event.is_hidden else "public"
                 return JsonResponse({"message": f"Event is now {status}", "is_hidden": event.is_hidden})
+
+            elif action == 'toggle_lock_challenges':
+                event.challenges_locked = not getattr(event, 'challenges_locked', False)
+                event.save()
+                status = "locked" if event.challenges_locked else "unlocked"
+                return JsonResponse({"message": f"Challenges are now {status}", "challenges_locked": event.challenges_locked})
                 
             else:
                 return JsonResponse({"error": "Unknown action"}, status=400)
@@ -546,6 +552,7 @@ def admin_event_detail_api(request, event_id):
                 "is_rejected": event.is_rejected,
                 "is_paused": event.is_paused,
                 "is_hidden": getattr(event, 'is_hidden', False),
+                "challenges_locked": getattr(event, 'challenges_locked', False),
                 "is_registration_paused": event.is_registration_paused,
                 "is_registration_open": event.is_registration_open(),
                 "accepting_writeups": event.accepting_writeups,

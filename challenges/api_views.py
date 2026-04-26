@@ -78,6 +78,9 @@ def event_challenges_api(request, event_id):
     if current_status in ('upcoming', 'pending'):
         return JsonResponse({'error': f'This event has not started yet. Current status: {current_status.upper()}', 'event': event.event_name}, status=403)
 
+    if getattr(event, 'challenges_locked', False):
+        return JsonResponse({'error': 'Challenges are currently locked by the administrator.', 'event': event.event_name}, status=403)
+
     # Pass the ban status to the frontend so it can render a specific ban page
     is_banned = access.is_banned
     challenges = Challenge.objects.filter(

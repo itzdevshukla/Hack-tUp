@@ -53,6 +53,7 @@ function AdminEventDetail() {
                         <p className="admin-content-subtitle" style={{ fontSize: '0.9rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '2px', display: 'flex', gap: '10px', alignItems: 'center' }}>
                             <span style={{ color: event.status === 'live' ? '#ff3b30' : (event.status === 'paused' ? '#FFA500' : '#888'), fontWeight: 'bold' }}>● {event.is_paused ? 'PAUSED' : event.status}</span>
                             {event.is_hidden && <span style={{ background: '#6c757d', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>HIDDEN</span>}
+                            {event.challenges_locked && <span style={{ background: '#ffc107', color: '#111', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>CHALLENGES LOCKED</span>}
                         </p>
                     </div>
                 </div>
