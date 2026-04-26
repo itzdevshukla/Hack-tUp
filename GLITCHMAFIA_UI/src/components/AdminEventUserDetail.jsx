@@ -8,7 +8,17 @@ import { getCsrfToken } from '../utils/csrf';
 function AdminEventUserDetail() {
     const { id, userId } = useParams();
     const location = useLocation();
-    const fromParticipants = new URLSearchParams(location.search).get('from') === 'participants';
+    const from = new URLSearchParams(location.search).get('from');
+    
+    let backLink = `/administration/event/${id}/submissions`;
+    let backText = 'Back to Live Submissions';
+    if (from === 'participants') {
+        backLink = `/administration/event/${id}/participants`;
+        backText = 'Back to Participants';
+    } else if (from === 'leaderboard') {
+        backLink = `/administration/event/${id}/leaderboard`;
+        backText = 'Back to Leaderboard';
+    }
     const [loading, setLoading] = useState(true);
     const [eventName, setEventName] = useState('');
     const [username, setUsername] = useState('');
@@ -342,8 +352,8 @@ function AdminEventUserDetail() {
             {compareModal}
             {writeupsPortal}
             {hintsPortal}
-            <Link to={fromParticipants ? `/administration/event/${id}/participants` : `/administration/event/${id}/submissions`} className="admin-back-link">
-                <FaArrowLeft /> {fromParticipants ? 'Back to Participants' : 'Back to Live Submissions'}
+            <Link to={backLink} className="admin-back-link">
+                <FaArrowLeft /> {backText}
             </Link>
 
             <div className="eud-header">
