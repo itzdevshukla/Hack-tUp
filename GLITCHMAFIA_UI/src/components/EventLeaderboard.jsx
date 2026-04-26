@@ -101,7 +101,9 @@ function CustomTooltip({ active, payload, label }) {
                         TIMELINE SNAPSHOT
                     </span>
                     <span style={{ color: '#fff', fontSize: '0.7rem', opacity: 0.6 }}>
-                        {label}
+                        {label && !isNaN(new Date(label).getTime()) 
+                            ? new Date(label).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+                            : label}
                     </span>
                 </div>
 
@@ -288,7 +290,8 @@ const TimelineGraph = React.memo(({ board, isTeamMode }) => {
                     <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
                         <XAxis 
-                            dataKey="timeLabel" 
+                            dataKey="rawTime" 
+                            tickFormatter={(timeStr) => new Date(timeStr).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}
                             stroke="rgba(255,255,255,0.4)" 
                             fontSize={11} 
                             tickMargin={12} 
