@@ -45,9 +45,23 @@ class CTFUpdateConsumer(AsyncWebsocketConsumer):
         logger.debug("WS disconnect: %s left %s (code=%s)", self.channel_name, self.group_name, close_code)
 
     async def receive(self, text_data=None, bytes_data=None):
-        # Clients are read-only — ignore any incoming messages.
-        pass
-
+        if text_data:
+            try:
+                data = json.loads(text_data)
+                if data.get("type") == "ping":
+                    user = self.scope.get("user")
+                    if user and user.is_authenticated:
+                        from channels.db import database_sync_to_async
+                        from django.utils import timezone
+                        from dashboard.models import EventAccess
+                        
+                        @database_sync_to_async
+                        def update_last_active():
+                            EventAccess.objects.filter(user=user, event_id=self.event_id).update(last_active=timezone.now())
+                        
+                        await update_last_active()
+            except Exception as e:
+                logger.error(f"WS receive error: {e}")
     # ── Group message handlers ────────────────────────────────────────────────
     # The method name must match  type  in group_send with dots replaced by underscores.
 

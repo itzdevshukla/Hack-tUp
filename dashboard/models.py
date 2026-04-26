@@ -10,6 +10,7 @@ class EventAccess(models.Model):
     granted_at = models.DateTimeField(auto_now_add=True)
     is_banned = models.BooleanField(default=False) 
     is_registered = models.BooleanField(default=False)
+    last_active = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ('user', 'event')

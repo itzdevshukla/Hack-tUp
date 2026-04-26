@@ -11,6 +11,7 @@ function AdminEventLiveSubmissions() {
     const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [liveCount, setLiveCount] = useState(null);
     const wsRef = useRef(null);
 
     const fetchSubmissions = async () => {
@@ -32,8 +33,26 @@ function AdminEventLiveSubmissions() {
     };
 
     useEffect(() => {
-        // Initial load only — no polling interval
+        // Initial load only — no polling interval for submissions
         fetchSubmissions();
+
+        // Start live count polling
+        const fetchLiveCount = async () => {
+            try {
+                const response = await fetch(`/api/admin/event/${id}/live-count/`, {
+                    headers: { 'X-CSRFToken': getCsrfToken() }
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) setLiveCount(result.live_count);
+                }
+            } catch (err) {
+                console.error("Failed to fetch live count:", err);
+            }
+        };
+
+        fetchLiveCount();
+        const liveCountInterval = setInterval(fetchLiveCount, 15000); // Poll every 15s
 
         // WebSocket for zero-API live updates
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -57,6 +76,7 @@ function AdminEventLiveSubmissions() {
         ws.onerror = () => setError('WebSocket error — check server');
 
         return () => {
+            clearInterval(liveCountInterval);
             if (wsRef.current) wsRef.current.close();
         };
     }, [id]);
@@ -187,11 +207,38 @@ function AdminEventLiveSubmissions() {
             <Link to={`/administration/event/${id}`} className="admin-back-link">
                 <FaArrowLeft /> Back to Event
             </Link>
-            <div className="admin-content-header" style={{ marginBottom: '20px', minWidth: 0, paddingRight: '20px' }}>
-                <h1 style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', fontSize: 'clamp(1.1rem, 3.5vw, 2rem)' }}>Live Submissions: {data.event_name}</h1>
-                <p className="admin-content-subtitle">
-                    <span style={{ color: '#00ff41', fontSize: '0.9rem' }}>⚡ Live via WebSocket</span>
-                </p>
+            <div className="admin-content-header" style={{ marginBottom: '20px', minWidth: 0, paddingRight: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <h1 style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', fontSize: 'clamp(1.1rem, 3.5vw, 2rem)' }}>Live Submissions: {data.event_name}</h1>
+                    <p className="admin-content-subtitle">
+                        <span style={{ color: '#00ff41', fontSize: '0.9rem' }}>⚡ Live via WebSocket</span>
+                    </p>
+                </div>
+                {liveCount !== null && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: 'rgba(0, 255, 65, 0.1)',
+                        border: '1px solid rgba(0, 255, 65, 0.3)',
+                        padding: '10px 20px',
+                        borderRadius: '30px',
+                        fontFamily: "'Share Tech Mono', monospace",
+                        color: '#fff',
+                        boxShadow: '0 0 15px rgba(0, 255, 65, 0.2)'
+                    }}>
+                        <span style={{
+                            width: '10px',
+                            height: '10px',
+                            background: '#00ff41',
+                            borderRadius: '50%',
+                            boxShadow: '0 0 10px #00ff41',
+                            animation: 'pulse 1.5s infinite'
+                        }}></span>
+                        <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#00ff41' }}>{liveCount}</span>
+                        <span style={{ fontSize: '0.9rem', color: '#ccc', textTransform: 'uppercase' }}>Active Player{liveCount !== 1 ? 's' : ''}</span>
+                    </div>
+                )}
             </div>
 
             {error && <div className="error-text">Polling Error: {error}</div>}
