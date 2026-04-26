@@ -444,27 +444,11 @@ function TeamLeaderboard({ eventId, eventName, teams, refresh }) {
    INDIVIDUAL LEADERBOARD (is_team_mode = false) — unchanged logic
    ════════════════════════════════════════════════════════════════════ */
 function IndividualLeaderboard({ eventId, users }) {
-    const [modalOpen, setModalOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState(null);
-    const [userSubmissions, setUserSubmissions] = useState([]);
-    const [modalLoading, setModalLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     const filteredUsers = users.filter(u => 
         u.username.toLowerCase().includes(searchTerm.toLowerCase())
     );
-
-    const openSubmissionsModal = async (userId, username) => {
-        setSelectedUser(username);
-        setModalOpen(true);
-        setModalLoading(true);
-        try {
-            const res = await fetch(`/api/admin/event/${eventId}/leaderboard/${userId}/submissions/`, { headers: headers() });
-            const result = await res.json();
-            setUserSubmissions(result.submissions || []);
-        } catch { setUserSubmissions([]); }
-        finally { setModalLoading(false); }
-    };
 
     return (
         <>
@@ -519,9 +503,13 @@ function IndividualLeaderboard({ eventId, users }) {
                                 <td>{u.solves}</td>
                                 <td>{u.last_solve || '—'}</td>
                                 <td>
-                                    <button className="admin-btn-action-view" onClick={() => openSubmissionsModal(u.user_id, u.username)}>
-                                        <FaEye /> View Submissions
-                                    </button>
+                                    <Link 
+                                        to={`/administration/event/${eventId}/user/${u.user_id}?from=leaderboard`} 
+                                        className="admin-btn-action-view"
+                                        style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                                    >
+                                        <FaEye /> View Profile
+                                    </Link>
                                 </td>
                             </tr>
                         ))}
@@ -536,50 +524,6 @@ function IndividualLeaderboard({ eventId, users }) {
                     </tbody>
                 </table>
             </div>
-
-            {modalOpen && (
-                <div className="admin-modal-overlay">
-                    <div className="admin-modal-content" style={{ maxWidth: 800 }}>
-                        <div className="admin-modal-header">
-                            <h2>Submissions History: {selectedUser}</h2>
-                            <button className="admin-modal-close" onClick={() => setModalOpen(false)}><FaTimes /></button>
-                        </div>
-                        {modalLoading ? (
-                            <p style={{ color: '#00ff41', textAlign: 'center', padding: 20 }}>Loading submissions...</p>
-                        ) : (
-                            <div className="admin-table-container" style={{ marginTop: 20, maxHeight: 500, overflowY: 'auto' }}>
-                                <table className="admin-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Time</th>
-                                            <th>Challenge</th>
-                                            <th>Submitted Flag</th>
-                                            <th>Result</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {userSubmissions.map(s => (
-                                            <tr key={s.id}>
-                                                <td>{s.submitted_at}</td>
-                                                <td>{s.challenge_title}</td>
-                                                <td style={{ fontFamily: 'monospace', color: '#aaa' }}>{s.flag}</td>
-                                                <td>
-                                                    {s.is_correct
-                                                        ? <span style={{ color: '#00ff41', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 'bold' }}><FaCheck /> Correct</span>
-                                                        : <span style={{ color: '#ff3b30', display: 'flex', alignItems: 'center', gap: 5 }}><FaTimes /> Incorrect</span>}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {userSubmissions.length === 0 && (
-                                            <tr><td colSpan="4" style={{ textAlign: 'center', padding: 20 }}>No submissions found.</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
         </>
     );
 }

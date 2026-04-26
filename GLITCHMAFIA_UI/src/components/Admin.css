@@ -364,6 +364,8 @@
     padding: 15px;
     border-bottom: 1px solid #111;
     font-size: 0.95rem;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .admin-table tr:hover td {
