@@ -481,6 +481,12 @@ def admin_event_control_api(request, event_id):
                 event.accepting_writeups = False
                 event.save()
                 return JsonResponse({"message": "Stopped accepting writeups"})
+
+            elif action == 'toggle_hidden':
+                event.is_hidden = not event.is_hidden
+                event.save()
+                status = "hidden" if event.is_hidden else "public"
+                return JsonResponse({"message": f"Event is now {status}", "is_hidden": event.is_hidden})
                 
             else:
                 return JsonResponse({"error": "Unknown action"}, status=400)
@@ -539,6 +545,7 @@ def admin_event_detail_api(request, event_id):
                 "is_approved": event.is_approved,
                 "is_rejected": event.is_rejected,
                 "is_paused": event.is_paused,
+                "is_hidden": getattr(event, 'is_hidden', False),
                 "is_registration_paused": event.is_registration_paused,
                 "is_registration_open": event.is_registration_open(),
                 "accepting_writeups": event.accepting_writeups,

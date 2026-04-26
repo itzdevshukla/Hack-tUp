@@ -23,7 +23,13 @@ from ctf.utils import encode_id
 @login_required
 @require_GET
 def dashboard_events_api(request):
-    events = Event.objects.filter(is_approved=True, is_rejected=False).order_by('-created_at')
+    from django.db.models import Q
+    registered_event_ids = EventAccess.objects.filter(user=request.user, is_registered=True).values_list('event_id', flat=True)
+    events = Event.objects.filter(
+        Q(is_hidden=False) | Q(id__in=registered_event_ids),
+        is_approved=True, 
+        is_rejected=False
+    ).order_by('-created_at')
     
     events_data = []
     for event in events:
@@ -177,7 +183,10 @@ def user_dashboard_overview_api(request):
     total_score = Challenge.objects.filter(id__in=solved_challenges_ids).aggregate(Sum('points'))['points__sum'] or 0
 
     # 4. Upcoming Events (platform wide)
+    from django.db.models import Q
+    registered_event_ids = EventAccess.objects.filter(user=request.user, is_registered=True).values_list('event_id', flat=True)
     upcoming_events_qs = Event.objects.filter(
+        Q(is_hidden=False) | Q(id__in=registered_event_ids),
         is_approved=True,
         is_rejected=False,
         start_date__gte=date.today()

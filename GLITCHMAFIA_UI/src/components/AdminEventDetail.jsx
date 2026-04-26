@@ -50,8 +50,9 @@ function AdminEventDetail() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div className="admin-content-header" style={{ marginBottom: '10px', minWidth: 0, paddingRight: '20px' }}>
                         <h1 style={{ fontSize: 'clamp(1.3rem, 4vw, 2.5rem)', marginBottom: '5px', wordBreak: 'break-word', overflowWrap: 'anywhere', color: '#00ff41', textShadow: '0 0 10px rgba(0,255,65,0.3)' }}>{event.name}</h1>
-                        <p className="admin-content-subtitle" style={{ fontSize: '0.9rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '2px' }}>
+                        <p className="admin-content-subtitle" style={{ fontSize: '0.9rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '2px', display: 'flex', gap: '10px', alignItems: 'center' }}>
                             <span style={{ color: event.status === 'live' ? '#ff3b30' : (event.status === 'paused' ? '#FFA500' : '#888'), fontWeight: 'bold' }}>● {event.is_paused ? 'PAUSED' : event.status}</span>
+                            {event.is_hidden && <span style={{ background: '#6c757d', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>HIDDEN</span>}
                         </p>
                     </div>
                 </div>

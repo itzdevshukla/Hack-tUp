@@ -60,6 +60,7 @@ class Event(models.Model):
     is_approved = models.BooleanField(default=True)
     is_rejected = models.BooleanField(default=False)
     accepting_writeups = models.BooleanField(default=False)
+    is_hidden = models.BooleanField(default=False, help_text="Hide event from non-registered users")
 
     # ===============================
     # TEAM MODE
