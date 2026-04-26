@@ -1213,9 +1213,8 @@ body.is-fullscreen-active aside {
     font-family: monospace;
     color: #888;
     font-size: 0.85rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .eud-sub-time {

@@ -328,7 +328,7 @@ def submit_flag_api(request, challenge_id):
         user_submission = UserChallenge.objects.create(
             user=request.user,
             challenge=challenge,
-            submitted_flag=submitted_flag[:50],
+            submitted_flag=submitted_flag[:255],
             is_correct=False
         )
         
