@@ -20,11 +20,15 @@ django_asgi_app = get_asgi_application()
 
 import ctf.routing  # noqa: E402
 
+from channels.security.websocket import AllowedHostsOriginValidator
+
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": AuthMiddlewareStack(
-        URLRouter(
-            ctf.routing.websocket_urlpatterns
+    "websocket": AllowedHostsOriginValidator(
+        AuthMiddlewareStack(
+            URLRouter(
+                ctf.routing.websocket_urlpatterns
+            )
         )
     ),
 })

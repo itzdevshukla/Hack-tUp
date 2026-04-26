@@ -29,7 +29,12 @@ SECRET_KEY = os.environ['SECRET_KEY']
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    "hackitupnow.tech",
+    "www.hackitupnow.tech",
+    "localhost",
+    "127.0.0.1",
+]
 
 # Cache backend - using Redis (Windows -> WSL)
 CACHES = {
