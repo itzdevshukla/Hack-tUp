@@ -272,6 +272,9 @@ function AdminEventParticipants() {
                             />
                         </div>
 
+                        <Link to={`/administration/event/${id}/banned-users`} className="admin-btn-view" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#ef4444', borderRadius: '4px', textDecoration: 'none' }}>
+                            <FaBan /> Banned Users
+                        </Link>
                         {data.is_team_mode && (
                             <Link to={`/administration/event/${id}/teams`} className="admin-btn-view" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(0,191,255,0.1)', border: '1px solid rgba(0,191,255,0.4)', color: '#00bfff', borderRadius: '4px', textDecoration: 'none' }}>
                                 <FaUsers /> View Teams

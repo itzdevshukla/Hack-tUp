@@ -1224,6 +1224,78 @@ def admin_event_participants_api(request, event_id):
         return JsonResponse({"error": "Event not found"}, status=404)
 
 @login_required
+def admin_event_banned_users_api(request, event_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Unauthorized"}, status=401)
+        
+    try:
+        event = Event.objects.get(id=event_id)
+        
+        # Allow: superuser, staff, organizer, or event_admin for this event
+        is_super = request.user.is_superuser or request.user.is_staff
+        has_role = EventRole.objects.filter(
+            event=event,
+            user=request.user,
+            role__in=['organizer', 'admin']
+        ).exists()
+
+        if not is_super and not has_role:
+            return JsonResponse({"error": "Forbidden — insufficient permissions"}, status=403)
+
+        # Fetch only banned users
+        registrations = EventAccess.objects.filter(event=event, is_banned=True).select_related('user').order_by('-granted_at')
+        
+        banned_users_data = []
+        for reg in registrations:
+            banned_users_data.append({
+                "id": encode_id(reg.user.id),
+                "username": reg.user.username,
+                "email": reg.user.email,
+                "banned_at": reg.granted_at.strftime("%Y-%m-%d %H:%M:%S") if hasattr(reg, 'granted_at') and reg.granted_at else None,
+                "is_banned": reg.is_banned
+            })
+            
+        return JsonResponse({
+            "event_name": event.event_name,
+            "banned_users": banned_users_data,
+            "total_banned": len(banned_users_data)
+        })
+    except Event.DoesNotExist:
+        return JsonResponse({"error": "Event not found"}, status=404)
+
+@login_required
+def admin_unban_all_users_api(request, event_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Unauthorized"}, status=401)
+        
+    if request.method == 'POST':
+        try:
+            event = Event.objects.get(id=event_id)
+            
+            # Allow: superuser, staff, organizer, or event_admin for this event
+            is_super = request.user.is_superuser or request.user.is_staff
+            has_role = EventRole.objects.filter(
+                event=event,
+                user=request.user,
+                role__in=['organizer', 'admin']
+            ).exists()
+
+            if not is_super and not has_role:
+                return JsonResponse({"error": "Forbidden — insufficient permissions"}, status=403)
+
+            # Unban all currently banned users
+            updated_count = EventAccess.objects.filter(event=event, is_banned=True).update(is_banned=False)
+            
+            return JsonResponse({"success": True, "message": f"Successfully unbanned {updated_count} users."})
+            
+        except Event.DoesNotExist:
+            return JsonResponse({"error": "Event not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+            
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+@login_required
 def admin_event_leaderboard_api(request, event_id):
     if not is_admin(request, event_id=event_id):
         return JsonResponse({"error": "Forbidden"}, status=403)

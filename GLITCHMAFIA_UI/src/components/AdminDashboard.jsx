@@ -9,6 +9,7 @@ import AdminEventRequests from './AdminEventRequests';
 import AdminUserDetail from './AdminUserDetail';
 import AdminEventDetail from './AdminEventDetail';
 import AdminEventParticipants from './AdminEventParticipants';
+import AdminEventBannedUsers from './AdminEventBannedUsers';
 import AdminEventTeams from './AdminEventTeams';
 import AdminEventLeaderboard from './AdminEventLeaderboard';
 import AdminEventLiveSubmissions from './AdminEventLiveSubmissions';
@@ -89,6 +90,7 @@ function AdminDashboard() {
                     <Route path="/event/:id/waves" element={<AdminEventWaves />} />
                     <Route path="/event/:id/roles" element={<AdminEventRoles />} />
                     <Route path="/event/:id/participants" element={<AdminEventParticipants />} />
+                    <Route path="/event/:id/banned-users" element={<AdminEventBannedUsers />} />
                     <Route path="/event/:id/teams" element={<AdminEventTeams />} />
                     <Route path="/event/:id/leaderboard" element={<AdminEventLeaderboard />} />
                     <Route path="/event/:id/submissions" element={<AdminEventLiveSubmissions />} />
