@@ -1416,25 +1416,6 @@ def admin_event_leaderboard_api(request, event_id):
     })
 
 @login_required
-def admin_event_live_count_api(request, event_id):
-    if not is_admin(request, event_id=event_id):
-        return JsonResponse({"error": "Forbidden"}, status=403)
-        
-    try:
-        from django.utils import timezone
-        from datetime import timedelta
-        from dashboard.models import EventAccess
-        event = Event.objects.get(id=event_id)
-        
-        # Count participants active in the last 3 minutes
-        threshold = timezone.now() - timedelta(minutes=3)
-        live_count = EventAccess.objects.filter(event=event, is_registered=True, last_active__gte=threshold).count()
-        
-        return JsonResponse({"success": True, "live_count": live_count})
-    except Event.DoesNotExist:
-        return JsonResponse({"error": "Event not found"}, status=404)
-
-@login_required
 def admin_event_submissions_api(request, event_id):
     if not is_admin(request, event_id=event_id):
         return JsonResponse({"error": "Forbidden"}, status=403)

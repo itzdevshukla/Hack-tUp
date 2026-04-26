@@ -119,15 +119,6 @@ function EventArenaLayout({ children }) {
 
                 ws.onopen = () => {
                     retryCount = 0; // reset backoff on successful connect
-                    // Start Heartbeat for live tracking
-                    const pingInterval = setInterval(() => {
-                        if (ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify({ type: 'ping' }));
-                        } else {
-                            clearInterval(pingInterval);
-                        }
-                    }, 60000); // 1 minute heartbeat
-                    ws._pingInterval = pingInterval;
                 };
 
                 ws.onmessage = (event) => {
@@ -177,10 +168,7 @@ function EventArenaLayout({ children }) {
         return () => {
             destroyed = true;
             if (retryTimer) clearTimeout(retryTimer);
-            if (ws) {
-                if (ws._pingInterval) clearInterval(ws._pingInterval);
-                ws.close();
-            }
+            if (ws) ws.close();
         };
     }, [id]);
 

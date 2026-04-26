@@ -10,8 +10,8 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('administration', '0001_initial'),
-        ('challenges', '0001_initial'),
+        ('administration', '0007_event_is_team_mode_event_max_team_size'),
+        ('challenges', '0010_announcement_type'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
