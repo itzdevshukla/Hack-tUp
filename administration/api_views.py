@@ -1917,42 +1917,51 @@ def admin_export_user_data_api(request, event_id, user_id):
             
         ws.append([rank, points, solves])
         
-        ws.append([]) # Blank row
+        ws.append([]) # Blank row 6
         
-        # Submissions
-        ws.append(["Correct Submissions"])
+        # Submissions and Hints Side-by-Side
+        ws.cell(row=7, column=1).value = "Correct Submissions"
         ws.cell(row=7, column=1).font = Font(bold=True, italic=True)
         
+        ws.cell(row=7, column=6).value = "Hints Taken"
+        ws.cell(row=7, column=6).font = Font(bold=True, italic=True)
+        
         sub_headers = ["No.", "Challenge Title", "Points", "Timestamp"]
-        ws.append(sub_headers)
-        for col_num in range(1, len(sub_headers) + 1):
-            ws.cell(row=8, column=col_num).font = Font(bold=True)
+        for c_idx, h_text in enumerate(sub_headers, 1):
+            cell = ws.cell(row=8, column=c_idx)
+            cell.value = h_text
+            cell.font = Font(bold=True)
             
-        if not submissions:
-            ws.append(["No correct submissions found.", "", "", ""])
-        else:
-            for idx, s in enumerate(submissions, 1):
-                timestamp = timezone.localtime(s.submitted_at).strftime("%Y-%m-%d %I:%M:%S %p") if s.submitted_at else ""
-                ws.append([idx, s.challenge.title, s.challenge.points, timestamp])
-                
-        ws.append([]) # Blank row
-        
-        # Hints
-        hints_start_row = ws.max_row + 1
-        ws.append(["Hints Taken"])
-        ws.cell(row=hints_start_row, column=1).font = Font(bold=True, italic=True)
-        
         hint_headers = ["No.", "Challenge Title", "Points Cost", "Timestamp"]
-        ws.append(hint_headers)
-        for col_num in range(1, len(hint_headers) + 1):
-            ws.cell(row=hints_start_row + 1, column=col_num).font = Font(bold=True)
+        for c_idx, h_text in enumerate(hint_headers, 6):
+            cell = ws.cell(row=8, column=c_idx)
+            cell.value = h_text
+            cell.font = Font(bold=True)
             
-        if not hints:
-            ws.append(["No hints taken.", "", "", ""])
-        else:
-            for idx, h in enumerate(hints, 1):
+        max_rows = max(len(submissions), len(hints)) if (submissions or hints) else 1
+        
+        for i in range(max_rows):
+            row_idx = 9 + i
+            
+            if i < len(submissions):
+                s = submissions[i]
+                timestamp = timezone.localtime(s.submitted_at).strftime("%Y-%m-%d %I:%M:%S %p") if s.submitted_at else ""
+                ws.cell(row=row_idx, column=1).value = i + 1
+                ws.cell(row=row_idx, column=2).value = s.challenge.title
+                ws.cell(row=row_idx, column=3).value = s.challenge.points
+                ws.cell(row=row_idx, column=4).value = timestamp
+            elif len(submissions) == 0 and i == 0:
+                ws.cell(row=row_idx, column=1).value = "No correct submissions found."
+                
+            if i < len(hints):
+                h = hints[i]
                 timestamp = timezone.localtime(h.unlocked_at).strftime("%Y-%m-%d %I:%M:%S %p") if h.unlocked_at else ""
-                ws.append([idx, h.hint.challenge.title, -h.hint.cost, timestamp])
+                ws.cell(row=row_idx, column=6).value = i + 1
+                ws.cell(row=row_idx, column=7).value = h.hint.challenge.title
+                ws.cell(row=row_idx, column=8).value = -h.hint.cost
+                ws.cell(row=row_idx, column=9).value = timestamp
+            elif len(hints) == 0 and i == 0:
+                ws.cell(row=row_idx, column=6).value = "No hints taken."
                 
         # Auto-adjust column widths for better readability (Margin Fix)
         from openpyxl.utils import get_column_letter
