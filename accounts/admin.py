@@ -26,10 +26,12 @@ class EmailAdminAuthenticationForm(AdminAuthenticationForm):
         password = self.cleaned_data.get('password')
 
         if email and password:
-            try:
-                user = User.objects.get(email=email)
+            # Query for an active staff member with this email to prevent DoS via MultipleObjectsReturned
+            user = User.objects.filter(email=email, is_staff=True, is_active=True).first()
+            
+            if user:
                 self.user_cache = authenticate(self.request, username=user.username, password=password)
-            except User.DoesNotExist:
+            else:
                 self.user_cache = None
 
             if self.user_cache is None:
