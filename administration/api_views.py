@@ -1898,13 +1898,16 @@ def admin_export_user_data_api(request, event_id, user_id):
         title_cell = ws['A1']
         title_cell.value = f"USER ACTIVITY REPORT : {user.username.upper()}"
         title_cell.font = Font(size=14, bold=True)
-        title_cell.alignment = Alignment(horizontal="center")
+        title_cell.alignment = Alignment(horizontal="center", vertical="center")
         
         ws.merge_cells('A2:D2')
         detail_cell = ws['A2']
         detail_cell.value = f"Event : {event.event_name.upper()}"
         detail_cell.font = Font(italic=True)
-        detail_cell.alignment = Alignment(horizontal="center")
+        detail_cell.alignment = Alignment(horizontal="center", vertical="center")
+        
+        ws.row_dimensions[1].height = 30
+        ws.row_dimensions[2].height = 25
         
         ws.append([]) # Row 3 Blank
 
