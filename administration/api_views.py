@@ -1745,11 +1745,9 @@ def admin_export_event_data_api(request, event_id):
         # Blank row
         ws.append([])
 
-        # Try to get data from cache first for performance
-        from challenges.services import get_leaderboard_data, update_leaderboard_cache
-        payload = get_leaderboard_data(event.id)
-        if not payload:
-            payload = update_leaderboard_cache(event.id)
+        # Always calculate fresh data for Export so it matches live DB exactly
+        from challenges.services import update_leaderboard_cache
+        payload = update_leaderboard_cache(event.id)
             
         if not payload:
             return JsonResponse({"error": "Leaderboard data unavailable"}, status=503)
@@ -1797,6 +1795,19 @@ def admin_export_event_data_api(request, event_id):
                     entry.get("points"),
                     entry.get("flags")
                 ])
+
+        # Auto-adjust column widths for better readability (Margin Fix)
+        for col in ws.columns:
+            max_length = 0
+            column_letter = col[0].column_letter
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            # Add a little padding
+            ws.column_dimensions[column_letter].width = max_length + 2
 
         # Prepare Response
         response = HttpResponse(
