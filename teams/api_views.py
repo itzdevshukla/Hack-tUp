@@ -176,9 +176,13 @@ def create_team_api(request, event_id):
         if Team.objects.filter(event=event, name__iexact=team_name).exists():
             return JsonResponse({"error": "A team with this name already exists for this event."}, status=400)
 
-        team = Team.objects.create(event=event, name=team_name, captain=request.user)
-        # Captain auto-joins as a member (no approval needed)
-        TeamMember.objects.create(team=team, user=request.user)
+        from django.db import IntegrityError
+        try:
+            team = Team.objects.create(event=event, name=team_name, captain=request.user)
+            # Captain auto-joins as a member (no approval needed)
+            TeamMember.objects.create(team=team, user=request.user)
+        except IntegrityError:
+            return JsonResponse({"error": "A team with this name already exists for this event."}, status=400)
 
         return JsonResponse({"success": True, "team": _serialize_team(team, request.user)}, status=201)
 
@@ -350,27 +354,29 @@ def handle_join_request_api(request, team_id, request_id):
 @login_required
 @require_POST
 def leave_team_api(request, team_id):
-    team = get_object_or_404(Team, id=team_id)
-    event = team.event
+    from django.db import transaction
+    with transaction.atomic():
+        # Lock the team to prevent race conditions (Zombie Teams)
+        team = get_object_or_404(Team.objects.select_for_update(), id=team_id)
+        
+        member = TeamMember.objects.filter(team=team, user=request.user).first()
+        if not member:
+            return JsonResponse({"error": "You are not a member of this team."}, status=400)
 
-    member = TeamMember.objects.filter(team=team, user=request.user).first()
-    if not member:
-        return JsonResponse({"error": "You are not a member of this team."}, status=400)
+        is_captain = team.captain_id == request.user.id
+        other_members = team.members.exclude(user=request.user)
 
-    is_captain = team.captain_id == request.user.id
-    other_members = team.members.exclude(user=request.user)
+        if is_captain:
+            if other_members.exists():
+                new_captain_member = other_members.order_by("joined_at").first()
+                team.captain = new_captain_member.user
+                team.save(update_fields=["captain"])
+            else:
+                team.delete()
+                return JsonResponse({"success": True, "message": "Team disbanded as you were the last member."})
 
-    if is_captain:
-        if other_members.exists():
-            new_captain_member = other_members.order_by("joined_at").first()
-            team.captain = new_captain_member.user
-            team.save(update_fields=["captain"])
-        else:
-            team.delete()
-            return JsonResponse({"success": True, "message": "Team disbanded as you were the last member."})
-
-    member.delete()
-    return JsonResponse({"success": True, "message": "You have left the team."})
+        member.delete()
+        return JsonResponse({"success": True, "message": "You have left the team."})
 
 
 # ─────────────────────────────────────────────────────────────────────

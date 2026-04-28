@@ -51,8 +51,17 @@ def event_writeups_api(request, event_id):
         challenge = get_object_or_404(Challenge, id=challenge_id, event=event)
 
         # Only allow writeups for solved challenges
-        if not UserChallenge.objects.filter(user=request.user, challenge=challenge, is_correct=True).exists():
-            return JsonResponse({'error': 'You have not solved this challenge yet.'}, status=403)
+        has_solved = False
+        if event.is_team_mode:
+            from teams.models import TeamMember, TeamChallenge
+            membership = TeamMember.objects.filter(user=request.user, team__event=event).first()
+            if membership:
+                has_solved = TeamChallenge.objects.filter(team=membership.team, challenge=challenge).exists()
+        else:
+            has_solved = UserChallenge.objects.filter(user=request.user, challenge=challenge, is_correct=True).exists()
+
+        if not has_solved:
+            return JsonResponse({'error': 'You (or your team) have not solved this challenge yet.'}, status=403)
 
         wu, _ = WriteUp.objects.update_or_create(
             user=request.user, challenge=challenge,

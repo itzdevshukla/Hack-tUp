@@ -1009,26 +1009,13 @@ def admin_import_users_api(request):
             if not excel_file:
                 return JsonResponse({"error": "No file uploaded"}, status=400)
 
-            # ── Security: file type ──────────────────────────────────────────
-            if not excel_file.name.lower().endswith('.xlsx'):
-                return JsonResponse({"error": "Only .xlsx files are allowed"}, status=400)
+            if not excel_file.name.lower().endswith(('.xlsx', '.csv')):
+                return JsonResponse({"error": "Only .xlsx and .csv files are allowed"}, status=400)
 
-            # ── Security: file size limit (5 MB) ────────────────────────────
             MAX_FILE_SIZE = 5 * 1024 * 1024
             if excel_file.size > MAX_FILE_SIZE:
                 return JsonResponse({"error": "File too large. Maximum allowed size is 5 MB"}, status=400)
 
-            # ── Load workbook (read-only for speed) ─────────────────────────
-            wb = openpyxl.load_workbook(excel_file, read_only=True, data_only=True)
-            ws = wb.active
-
-            # ── Security: row count cap ──────────────────────────────────────
-            MAX_ROWS = 1200
-            raw_rows = [r for r in ws.iter_rows(min_row=2, values_only=True) if r and r[0]]
-            if len(raw_rows) > MAX_ROWS:
-                return JsonResponse({"error": f"Too many rows. Maximum allowed is {MAX_ROWS}"}, status=400)
-
-            # ── Resolve event ────────────────────────────────────────────────
             event_obj = None
             if event_id and event_id not in ('', 'None'):
                 decoded_event_id = decode_id(event_id)
@@ -1039,108 +1026,63 @@ def admin_import_users_api(request):
                 except Event.DoesNotExist:
                     return JsonResponse({"error": "Event not found"}, status=404)
 
-            # ── Pre-fetch ALL existing usernames in one query ────────────────
-            # This replaces the per-row  User.objects.filter(username=…).exists()
-            # call that caused 2500+ DB round-trips for 850 users.
-            existing_usernames = set(User.objects.values_list('username', flat=True))
+            import tablib
+            from accounts.admin import UserResource
 
-            EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+            dataset = tablib.Dataset()
+            file_content = excel_file.read()
+            
+            try:
+                if excel_file.name.lower().endswith('.csv'):
+                    dataset.load(file_content.decode('utf-8'), format='csv')
+                else:
+                    dataset.load(file_content, format='xlsx')
+            except Exception as e:
+                return JsonResponse({"error": f"Failed to parse file: {str(e)}"}, status=400)
 
-            # Fast PBKDF2 hasher — 100k iterations (7x faster than Django’s 720k default).
-            # Acceptable for temporary event credentials that users should change after login.
-            from django.contrib.auth.hashers import PBKDF2PasswordHasher
-            _hasher = PBKDF2PasswordHasher()
-            _hasher.iterations = 100_000
+            # Initialize the resource with request and event
+            resource = UserResource(request=request, event=event_obj)
+            
+            # Perform the import
+            result = resource.import_data(dataset, dry_run=False)
 
-            users_to_create  = []   # User ORM objects (not yet saved)
-            credentials_log  = []   # plain-text passwords for the output Excel
+            if result.has_errors():
+                errors = []
+                for idx, row_error in result.row_errors():
+                    for err in row_error:
+                        errors.append(f"Row {idx}: {str(err.error)}")
+                return JsonResponse({"error": "Import failed with errors", "details": errors}, status=400)
 
-            for row in raw_rows:
-                full_name  = re.sub(r'[^\w\s\-\.]', '', str(row[0])).strip()[:150]
-                email_raw  = str(row[1]).strip() if len(row) > 1 and row[1] else ""
-                email      = email_raw[:254] if EMAIL_RE.match(email_raw) else ""
+            # Retrieve generated credentials from session
+            credentials = request.session.pop('generated_credentials', None)
 
-                name_parts = full_name.split()
-                first_name = name_parts[0][:150] if name_parts else "User"
-                last_name  = " ".join(name_parts[1:])[:150] if len(name_parts) > 1 else ""
+            if credentials:
+                import csv
+                from io import StringIO
+                
+                def sanitize_csv_field(value):
+                    value_str = str(value) if value is not None else ''
+                    if value_str.startswith(('=', '+', '-', '@')):
+                        return f"'{value_str}"
+                    return value_str
 
-                # Unique username — collision-safe against in-memory set
-                base_username = "".join(filter(str.isalnum, full_name)).lower()[:28] or "user"
-                username      = base_username
-                counter       = 1
-                while username in existing_usernames:
-                    suffix   = f"_{counter}"
-                    username = base_username[:30 - len(suffix)] + suffix
-                    counter += 1
-                existing_usernames.add(username)   # reserve immediately
+                csv_buffer = StringIO()
+                writer = csv.writer(csv_buffer)
+                
+                writer.writerow(credentials[0].keys())
+                for cred in credentials:
+                    sanitized_values = [sanitize_csv_field(v) for v in cred.values()]
+                    writer.writerow(sanitized_values)
+                
+                csv_bytes = csv_buffer.getvalue().encode('utf-8')
+                
+                response = HttpResponse(csv_bytes, content_type='text/csv')
+                response['Content-Disposition'] = f'attachment; filename="imported_credentials_{len(credentials)}_users.csv"'
+                response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+                logger.info("Successfully imported users via API and generated CSV credentials.")
+                return response
 
-                # 12-char cryptographically random password
-                alphabet = string.ascii_letters + string.digits
-                password = ''.join(secrets.choice(alphabet) for _ in range(12))
-
-                users_to_create.append(User(
-                    username   = username,
-                    password   = _hasher.encode(password, _hasher.salt()),
-                    first_name = first_name,
-                    last_name  = last_name,
-                    email      = email,
-                    is_active  = True,
-                ))
-                credentials_log.append({
-                    "full_name": str(row[0]).strip(),
-                    "email":     email,
-                    "username":  username,
-                    "password":  password,
-                })
-
-            # ── Atomic block: ALL-or-NOTHING ─────────────────────────────────
-            # If Excel generation crashes, the transaction rolls back and NO
-            # users land in the DB — they never existed.
-            with transaction.atomic():
-                # One bulk INSERT for all users (single DB call)
-                created_users = User.objects.bulk_create(users_to_create, batch_size=250)
-
-                # Bulk-grant event access
-                if event_obj and created_users:
-                    EventAccess.objects.bulk_create(
-                        [EventAccess(user=u, event=event_obj, is_registered=True)
-                         for u in created_users],
-                        batch_size=250,
-                        ignore_conflicts=True,
-                    )
-
-                # Build the output Excel INSIDE the transaction.
-                # Any exception here rolls back every user insert above.
-                out_wb = openpyxl.Workbook()
-                out_ws = out_wb.active
-                out_ws.title = "Credentials"
-                out_ws.append(["Name", "Email", "Username", "Password", "Status"])
-
-                event_suffix = " + Event Access" if event_obj else ""
-                for cred in credentials_log:
-                    out_ws.append([
-                        cred["full_name"],
-                        cred["email"],
-                        cred["username"],
-                        cred["password"],
-                        f"Created{event_suffix}",
-                    ])
-
-                buffer = BytesIO()
-                out_wb.save(buffer)
-                excel_bytes = buffer.getvalue()   # capture before transaction closes
-
-            # ── Return the file (transaction already committed) ──────────────
-            response = HttpResponse(
-                excel_bytes,
-                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            )
-            response['Content-Disposition'] = (
-                f'attachment; filename="credentials_{len(created_users)}_users.xlsx"'
-            )
-            response['Access-Control-Expose-Headers'] = 'Content-Disposition'
-            logger.info("Imported %d users successfully (event=%s)", len(created_users), event_obj)
-            return response
+            return JsonResponse({"message": "Import successful, but no credentials generated."})
 
         except Exception as e:
             logger.exception("admin_import_users_api failed")
@@ -1239,22 +1181,11 @@ def admin_event_participants_api(request, event_id):
 
 @login_required
 def admin_event_banned_users_api(request, event_id):
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "Unauthorized"}, status=401)
+    if not is_admin(request, event_id=event_id):
+        return JsonResponse({"error": "Forbidden — insufficient permissions"}, status=403)
         
     try:
         event = Event.objects.get(id=event_id)
-        
-        # Allow: superuser, staff, organizer, or event_admin for this event
-        is_super = request.user.is_superuser or request.user.is_staff
-        has_role = EventRole.objects.filter(
-            event=event,
-            user=request.user,
-            role__in=['organizer', 'admin']
-        ).exists()
-
-        if not is_super and not has_role:
-            return JsonResponse({"error": "Forbidden — insufficient permissions"}, status=403)
 
         # Fetch only banned users
         registrations = EventAccess.objects.filter(event=event, is_banned=True).select_related('user').order_by('-granted_at')
@@ -1279,23 +1210,12 @@ def admin_event_banned_users_api(request, event_id):
 
 @login_required
 def admin_unban_all_users_api(request, event_id):
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "Unauthorized"}, status=401)
+    if not is_admin(request, event_id=event_id):
+        return JsonResponse({"error": "Forbidden — insufficient permissions"}, status=403)
         
     if request.method == 'POST':
         try:
             event = Event.objects.get(id=event_id)
-            
-            # Allow: superuser, staff, organizer, or event_admin for this event
-            is_super = request.user.is_superuser or request.user.is_staff
-            has_role = EventRole.objects.filter(
-                event=event,
-                user=request.user,
-                role__in=['organizer', 'admin']
-            ).exists()
-
-            if not is_super and not has_role:
-                return JsonResponse({"error": "Forbidden — insufficient permissions"}, status=403)
 
             # Unban all currently banned users
             updated_count = EventAccess.objects.filter(event=event, is_banned=True).update(is_banned=False)
@@ -1654,23 +1574,12 @@ def admin_toggle_ban_team_api(request, event_id, team_id):
     If any member is unbanned, it will ban all members. 
     If all members are banned, it will unban all members.
     """
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "Unauthorized"}, status=401)
+    if not is_admin(request, event_id=event_id):
+        return JsonResponse({"error": "Forbidden — insufficient permissions to ban teams"}, status=403)
 
     if request.method == 'POST':
         try:
             event = Event.objects.get(id=event_id)
-
-            # Allow: superuser, staff, organizer, or event_admin for this event
-            is_super = request.user.is_superuser or request.user.is_staff
-            has_role = EventRole.objects.filter(
-                event=event,
-                user=request.user,
-                role__in=['organizer', 'admin']
-            ).exists()
-
-            if not is_super and not has_role:
-                return JsonResponse({"error": "Forbidden — insufficient permissions to ban teams"}, status=403)
 
             from teams.models import Team
             team = Team.objects.get(id=team_id, event=event)
@@ -1702,23 +1611,12 @@ def admin_delete_team_api(request, event_id, team_id):
     Deletes a specified team and removes the members from the EventAccess 
     so they can join other teams or the event again.
     """
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "Unauthorized"}, status=401)
+    if not is_admin(request, event_id=event_id):
+        return JsonResponse({"error": "Forbidden — insufficient permissions"}, status=403)
 
     if request.method == 'DELETE':
         try:
             event = Event.objects.get(id=event_id)
-
-            # Allow: superuser, staff, organizer, or event_admin
-            is_super = request.user.is_superuser or request.user.is_staff
-            has_role = EventRole.objects.filter(
-                event=event,
-                user=request.user,
-                role__in=['organizer', 'admin']
-            ).exists()
-
-            if not is_super and not has_role:
-                return JsonResponse({"error": "Forbidden — insufficient permissions"}, status=403)
 
             from teams.models import Team
             team = Team.objects.get(id=team_id, event=event)
@@ -1741,23 +1639,12 @@ def admin_delete_team_api(request, event_id, team_id):
 
 @login_required
 def admin_toggle_ban_participant_api(request, event_id, user_id):
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "Unauthorized"}, status=401)
+    if not is_admin(request, event_id=event_id):
+        return JsonResponse({"error": "Forbidden — insufficient permissions to ban users"}, status=403)
 
     if request.method == 'POST':
         try:
             event = Event.objects.get(id=event_id)
-
-            # Allow: superuser, staff, organizer, or event_admin for this event
-            is_super = request.user.is_superuser or request.user.is_staff
-            has_role = EventRole.objects.filter(
-                event=event,
-                user=request.user,
-                role__in=['organizer', 'admin']
-            ).exists()
-
-            if not is_super and not has_role:
-                return JsonResponse({"error": "Forbidden — insufficient permissions to ban users"}, status=403)
 
             user = User.objects.get(id=user_id)
             access = EventAccess.objects.get(event=event, user=user)
