@@ -1797,17 +1797,21 @@ def admin_export_event_data_api(request, event_id):
                 ])
 
         # Auto-adjust column widths for better readability (Margin Fix)
-        for col in ws.columns:
+        from openpyxl.utils import get_column_letter
+        for i, col in enumerate(ws.columns, 1):
             max_length = 0
-            column_letter = col[0].column_letter
+            column_letter = get_column_letter(i)
             for cell in col:
                 try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
+                    # Ignore merged cells in length calculation as they don't have standard value strings usually
+                    if cell.value and type(cell).__name__ != 'MergedCell':
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
                 except:
                     pass
             # Add a little padding
-            ws.column_dimensions[column_letter].width = max_length + 2
+            if max_length > 0:
+                ws.column_dimensions[column_letter].width = max_length + 2
 
         # Prepare Response
         response = HttpResponse(
@@ -1820,6 +1824,9 @@ def admin_export_event_data_api(request, event_id):
 
     except Event.DoesNotExist:
         return JsonResponse({"error": "Event not found"}, status=404)
+    except Exception as e:
+        import traceback
+        return JsonResponse({"error": "Export failed", "details": str(e), "traceback": traceback.format_exc()}, status=500)
 
 @login_required
 def admin_event_roles_api(request, event_id):
