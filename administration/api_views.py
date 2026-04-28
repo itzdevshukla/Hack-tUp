@@ -1889,20 +1889,22 @@ def admin_export_user_data_api(request, event_id, user_id):
         ws = wb.active
         ws.title = f"{user.username[:25]} Export"
 
-        from openpyxl.styles import Font, Alignment, PatternFill
+        from openpyxl.styles import Font, Alignment
 
         # Row 1 and 2: Big Title Header
         ws.append(["", "", "", ""])
         ws.append(["", "", "", ""])
-        ws.merge_cells('A1:D2')
+        ws.merge_cells('A1:D1')
         title_cell = ws['A1']
-        title_cell.value = f"ACTIVITY REPORT: {user.username.upper()}  |  EVENT: {event.event_name.upper()}"
-        title_cell.font = Font(size=14, bold=True, color="FFFFFF")
-        title_cell.fill = PatternFill(start_color="1E1E1E", end_color="1E1E1E", fill_type="solid")
-        title_cell.alignment = Alignment(horizontal="center", vertical="center")
+        title_cell.value = f"USER ACTIVITY REPORT : {user.username.upper()}"
+        title_cell.font = Font(size=14, bold=True)
+        title_cell.alignment = Alignment(horizontal="center")
         
-        ws.row_dimensions[1].height = 20
-        ws.row_dimensions[2].height = 20
+        ws.merge_cells('A2:D2')
+        detail_cell = ws['A2']
+        detail_cell.value = f"Event : {event.event_name.upper()}"
+        detail_cell.font = Font(italic=True)
+        detail_cell.alignment = Alignment(horizontal="center")
         
         ws.append([]) # Row 3 Blank
 
@@ -1912,7 +1914,6 @@ def admin_export_user_data_api(request, event_id, user_id):
         for col_num in range(1, len(headers_rank) + 1):
             cell = ws.cell(row=4, column=col_num)
             cell.font = Font(bold=True)
-            cell.fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
             
         ws.append([rank, points, solves])
         
@@ -1960,7 +1961,8 @@ def admin_export_user_data_api(request, event_id, user_id):
             column_letter = get_column_letter(i)
             for cell in col:
                 try:
-                    if cell.value and type(cell).__name__ != 'MergedCell':
+                    # Ignore rows 1 & 2 as they contain wide merged titles that skew column width
+                    if cell.row > 2 and cell.value and type(cell).__name__ != 'MergedCell':
                         if len(str(cell.value)) > max_length:
                             max_length = len(str(cell.value))
                 except:
