@@ -1,11 +1,40 @@
 from django.contrib import admin
-from .models import Challenge, UserChallenge, ChallengeHint, UserHint, ChallengeAttachment
+from django.contrib.auth.hashers import make_password
+from .models import (
+    Challenge, UserChallenge, ChallengeHint, UserHint, ChallengeAttachment,
+    ChallengeWave, Announcement, WriteUp
+)
 
+class ChallengeAttachmentInline(admin.TabularInline):
+    model = ChallengeAttachment
+    extra = 1
+
+@admin.register(ChallengeWave)
+class ChallengeWaveAdmin(admin.ModelAdmin):
+    list_display = ('name', 'event', 'order', 'is_active', 'created_at')
+    list_filter = ('event', 'is_active')
+    search_fields = ('name', 'event__event_name')
+    ordering = ('event', 'order')
+
+@admin.register(Challenge)
 class ChallengeAdmin(admin.ModelAdmin):
-    list_display = ('title', 'category', 'difficulty', 'points', 'event', 'created_at')
-    list_filter = ('category', 'difficulty', 'event')
+    list_display = ('title', 'category', 'difficulty', 'points', 'event', 'wave', 'created_at')
+    list_filter = ('category', 'difficulty', 'event', 'wave')
     search_fields = ('title', 'description', 'flag')
+    inlines = [ChallengeAttachmentInline]
 
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+        initial['author'] = request.user.pk
+        return initial
+
+    def save_model(self, request, obj, form, change):
+        # ✅ auto-hash flag
+        if not obj.flag.startswith("pbkdf2_"):
+            obj.flag = make_password(obj.flag)
+        super().save_model(request, obj, form, change)
+
+@admin.register(UserChallenge)
 class UserChallengeAdmin(admin.ModelAdmin):
     list_display = ('user', 'challenge', 'is_correct', 'submitted_at')
     list_filter = ('is_correct', 'submitted_at')
@@ -27,29 +56,29 @@ class UserChallengeAdmin(admin.ModelAdmin):
 
         super().save_model(request, obj, form, change)
 
+@admin.register(ChallengeHint)
 class ChallengeHintAdmin(admin.ModelAdmin):
     list_display = ('challenge', 'cost', 'timestamp')
     list_filter = ('challenge',)
 
+@admin.register(UserHint)
 class UserHintAdmin(admin.ModelAdmin):
     list_display = ('user', 'hint', 'unlocked_at')
     search_fields = ('user__username', 'hint__content')
 
+@admin.register(ChallengeAttachment)
 class ChallengeAttachmentAdmin(admin.ModelAdmin):
     list_display = ('challenge', 'file', 'uploaded_at')
     search_fields = ('challenge__title',)
 
-# Safe Registration
-models_to_register = [
-    (Challenge, ChallengeAdmin),
-    (UserChallenge, UserChallengeAdmin),
-    (ChallengeHint, ChallengeHintAdmin),
-    (UserHint, UserHintAdmin),
-    (ChallengeAttachment, ChallengeAttachmentAdmin)
-]
+@admin.register(Announcement)
+class AnnouncementAdmin(admin.ModelAdmin):
+    list_display = ('title', 'event', 'type', 'created_by', 'created_at')
+    list_filter = ('type', 'event')
+    search_fields = ('title', 'content', 'event__event_name')
 
-for model, admin_class in models_to_register:
-    try:
-        admin.site.register(model, admin_class)
-    except admin.sites.AlreadyRegistered:
-        pass
+@admin.register(WriteUp)
+class WriteUpAdmin(admin.ModelAdmin):
+    list_display = ('user', 'challenge', 'updated_at')
+    list_filter = ('challenge__event',)
+    search_fields = ('user__username', 'challenge__title')

@@ -280,7 +280,7 @@ AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ================= COOKIE SECURITY =================
-# Set Secure cookies in production only (Render requires HTTPS)
+# Set Secure cookies in production only (requires HTTPS)
 SESSION_COOKIE_AGE = 7200  # 2 hours
 SESSION_SAVE_EVERY_REQUEST = True
 

@@ -26,18 +26,23 @@ class ChallengeWave(models.Model):
 class Challenge(models.Model):
 
     CATEGORY_CHOICES = [
-        ('web', 'Web'),
-        ('crypto', 'Crypto'),
+        ('web', 'Web Exploitation'),
+        ('crypto', 'Cryptography'),
         ('osint', 'OSINT'),
-        ('pwn', 'Pwn'),
-        ('forensics', 'Forensics'),
-        ('misc', 'Misc'),
+        ('pwn', 'Binary Exploitation (Pwn)'),
+        ('forensics', 'Digital Forensics'),
+        ('re', 'Reverse Engineering'),
+        ('mobile', 'Mobile Security'),
+        ('hardware', 'Hardware / IoT'),
+        ('stego', 'Steganography'),
+        ('misc', 'Miscellaneous'),
     ]
 
     DIFFICULTY_CHOICES = [
         ('easy', 'Easy'),
         ('medium', 'Medium'),
         ('hard', 'Hard'),
+        ('insane', 'Insane'),
     ]
 
     # ================= CORE FIELDS =================
