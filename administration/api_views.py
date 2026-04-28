@@ -1894,13 +1894,13 @@ def admin_export_user_data_api(request, event_id, user_id):
         # Row 1 and 2: Big Title Header
         ws.append(["", "", "", ""])
         ws.append(["", "", "", ""])
-        ws.merge_cells('A1:D1')
+        ws.merge_cells('A1:I1')
         title_cell = ws['A1']
         title_cell.value = f"USER ACTIVITY REPORT : {user.username.upper()}"
         title_cell.font = Font(size=14, bold=True)
         title_cell.alignment = Alignment(horizontal="center", vertical="center")
         
-        ws.merge_cells('A2:D2')
+        ws.merge_cells('A2:I2')
         detail_cell = ws['A2']
         detail_cell.value = f"Event : {event.event_name.upper()}"
         detail_cell.font = Font(italic=True)
