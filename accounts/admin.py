@@ -116,15 +116,20 @@ class UserResource(resources.ModelResource):
         password = "".join(secrets.choice(chars) for _ in range(12))
         row['password'] = password
 
-        self.generated_credentials.append({
+        cred_dict = {
             'First Name': first_name,
             'Last Name': row.get('last_name', ''),
             'Email': email,
-            'Team Name': team_name,
-            'Role': role,
-            'Username': username,
-            'Plain Password': password
-        })
+        }
+        
+        if self.target_event and getattr(self.target_event, 'is_team_mode', False):
+            cred_dict['Team Name'] = team_name
+            cred_dict['Role'] = role
+            
+        cred_dict['Username'] = username
+        cred_dict['Plain Password'] = password
+
+        self.generated_credentials.append(cred_dict)
 
     def after_import(self, dataset, result, using_transactions, dry_run, **kwargs):
         if not dry_run and self.request:
