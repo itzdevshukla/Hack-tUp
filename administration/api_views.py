@@ -1889,23 +1889,30 @@ def admin_export_user_data_api(request, event_id, user_id):
         ws = wb.active
         ws.title = f"{user.username[:25]} Export"
 
-        from openpyxl.styles import Font, Alignment
+        from openpyxl.styles import Font, Alignment, PatternFill
 
-        # Row 1: Event Name
-        ws.append(["Event Name", event.event_name])
-        ws.cell(row=1, column=1).font = Font(bold=True)
+        # Row 1 and 2: Big Title Header
+        ws.append(["", "", "", ""])
+        ws.append(["", "", "", ""])
+        ws.merge_cells('A1:D2')
+        title_cell = ws['A1']
+        title_cell.value = f"ACTIVITY REPORT: {user.username.upper()}  |  EVENT: {event.event_name.upper()}"
+        title_cell.font = Font(size=14, bold=True, color="FFFFFF")
+        title_cell.fill = PatternFill(start_color="1E1E1E", end_color="1E1E1E", fill_type="solid")
+        title_cell.alignment = Alignment(horizontal="center", vertical="center")
         
-        # Row 2: Username
-        ws.append(["Username", user.username])
-        ws.cell(row=2, column=1).font = Font(bold=True)
+        ws.row_dimensions[1].height = 20
+        ws.row_dimensions[2].height = 20
         
-        ws.append([]) # Blank row
+        ws.append([]) # Row 3 Blank
 
         # Rank / Total Points / Solves
         headers_rank = ["Rank", "Total Points", "Total Solves"]
         ws.append(headers_rank)
         for col_num in range(1, len(headers_rank) + 1):
-            ws.cell(row=4, column=col_num).font = Font(bold=True)
+            cell = ws.cell(row=4, column=col_num)
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
             
         ws.append([rank, points, solves])
         
