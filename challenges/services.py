@@ -253,8 +253,8 @@ def _build_team_payload(event) -> dict:
             "avatar": f"https://ui-avatars.com/api/?name={team.name}&background=random&color=fff",
         })
 
-    # Sort: points DESC, last_solve_time ASC (earlier = better tie-break)
-    rows.sort(key=lambda t: (-t["points"], t["last_solve_time"] or ""))
+    # Sort: points DESC, then by whether they have a solve (solvers first), then last_solve_time ASC
+    rows.sort(key=lambda t: (-t["points"], 1 if not t["last_solve_time"] else 0, t["last_solve_time"] or ""))
 
     team_map = {}
     member_map = {}
@@ -357,7 +357,7 @@ def _build_individual_payload(event) -> dict:
             "avatar": f"https://ui-avatars.com/api/?name={user.username}&background=random&color=fff",
         })
 
-    rows.sort(key=lambda u: (-u["points"], u["last_solve_time"] or ""))
+    rows.sort(key=lambda u: (-u["points"], 1 if not u["last_solve_time"] else 0, u["last_solve_time"] or ""))
 
     user_map = {}
     for idx, row in enumerate(rows):
