@@ -1745,75 +1745,58 @@ def admin_export_event_data_api(request, event_id):
         # Blank row
         ws.append([])
 
-        # Data Headers
-        headers = ["Rank", "Username", "Email", "Total Points", "Challenges Solved"]
-        ws.append(headers)
-        
-        # Style Data Headers
-        for col_num, header in enumerate(headers, 1):
-            cell = ws.cell(row=4, column=col_num)
-            cell.font = Font(bold=True)
+        # Try to get data from cache first for performance
+        from challenges.services import get_leaderboard_data, update_leaderboard_cache
+        payload = get_leaderboard_data(event.id)
+        if not payload:
+            payload = update_leaderboard_cache(event.id)
+            
+        if not payload:
+            return JsonResponse({"error": "Leaderboard data unavailable"}, status=503)
+            
+        is_team_mode = payload.get('is_team_mode', False)
+        leaderboard_data = payload.get('leaderboard', [])
 
-        # Get all registered participants for the event
-        all_participants = EventAccess.objects.filter(event=event).select_related('user')
-        
-        # Get Leaderboard logic for those who actually scored
-        leaderboard_data = (
-            UserChallenge.objects
-            .filter(
-                challenge__event=event,
-                is_correct=True,
-                user__eventaccess__event=event
-            )
-            .values("user__id")
-            .annotate(
-                total_points=Sum("challenge__points"),
-                solves=Count("id"),
-                last_solve=Max("submitted_at")
-            )
-        )
-        
-        # Create a dictionary for quick lookup of scores
-        scores_dict = {
-            item["user__id"]: {
-                "total_points": item["total_points"],
-                "solves": item["solves"],
-                "last_solve": item["last_solve"]
-            } for item in leaderboard_data
-        }
-        
-        # Combine participants with their scores
-        combined_data = []
-        for p in all_participants:
-            user_id = p.user.id
-            score_info = scores_dict.get(user_id, {"total_points": 0, "solves": 0, "last_solve": None})
+        # Data Headers & Rows based on Event Mode
+        if is_team_mode:
+            headers = ["Rank", "Team Name", "Captain", "Members (Count)", "Total Points", "Challenges Solved"]
+            ws.append(headers)
             
-            combined_data.append({
-                "username": p.user.username,
-                "email": p.user.email,
-                "total_points": score_info["total_points"] or 0,
-                "solves": score_info["solves"] or 0,
-                "last_solve": score_info["last_solve"]
-            })
+            for col_num, header in enumerate(headers, 1):
+                cell = ws.cell(row=4, column=col_num)
+                cell.font = Font(bold=True)
+                
+            for entry in leaderboard_data:
+                members_str = ", ".join(entry.get("members", []))
+                ws.append([
+                    entry.get("rank"),
+                    entry.get("name"),
+                    entry.get("captain"),
+                    f"{members_str} ({entry.get('member_count')})",
+                    entry.get("points"),
+                    entry.get("flags")
+                ])
+        else:
+            headers = ["Rank", "Username", "Email", "Total Points", "Challenges Solved"]
+            ws.append(headers)
             
-        # Sort the combined data: first by points (descending), then by last_solve time (ascending)
-        # Note: Users with no solves have last_solve as None, handle that in sorting
-        combined_data.sort(
-            key=lambda x: (
-                -x["total_points"], 
-                x["last_solve"] if x["last_solve"] else timezone.now() # Push non-solvers down
-            )
-        )
-        
-        # Append ranked data to worksheet
-        for rank, entry in enumerate(combined_data, start=1):
-            ws.append([
-                rank,
-                entry["username"],
-                entry["email"],
-                entry["total_points"],
-                entry["solves"]
-            ])
+            for col_num, header in enumerate(headers, 1):
+                cell = ws.cell(row=4, column=col_num)
+                cell.font = Font(bold=True)
+                
+            # Need emails for individual export, so we map usernames to emails
+            user_emails = dict(EventAccess.objects.filter(event=event).select_related('user').values_list('user__username', 'user__email'))
+            
+            for entry in leaderboard_data:
+                username = entry.get("username")
+                email = user_emails.get(username, "N/A")
+                ws.append([
+                    entry.get("rank"),
+                    username,
+                    email,
+                    entry.get("points"),
+                    entry.get("flags")
+                ])
 
         # Prepare Response
         response = HttpResponse(

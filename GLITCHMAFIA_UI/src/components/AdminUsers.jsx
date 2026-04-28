@@ -148,6 +148,14 @@ function AdminUsers() {
                     if (contentType.includes('application/json')) {
                         const errorData = await res.json();
                         errorMsg = errorData.error || errorMsg;
+                        if (errorData.details && Array.isArray(errorData.details)) {
+                            // Append the first 5 errors to the message to avoid massive modals
+                            const visibleErrors = errorData.details.slice(0, 5);
+                            errorMsg += ':\n• ' + visibleErrors.join('\n• ');
+                            if (errorData.details.length > 5) {
+                                errorMsg += `\n...and ${errorData.details.length - 5} more errors.`;
+                            }
+                        }
                     } else if (res.status === 504 || res.status === 502) {
                         errorMsg = "Server timed out while importing. Please try with a smaller file or contact the admin.";
                     } else {
@@ -162,7 +170,7 @@ function AdminUsers() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = "generated_credentials.xlsx";
+            a.download = "generated_credentials.csv";
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -288,9 +296,10 @@ function AdminUsers() {
                             </button>
                         </div>
                         <div className="admin-modal-body">
-                            <p className="admin-modal-desc">
-                                Upload an Excel file (.xlsx) with columns: <strong>Name, Email</strong>. <br />
-                                Username is auto-generated from the full name. Credentials will be downloaded after import.
+                            <p className="admin-modal-desc" style={{ whiteSpace: 'pre-wrap' }}>
+                                Upload an Excel or CSV file with the following columns: <strong>first_name, last_name, email, team_name, role</strong>. <br />
+                                - <code>team_name</code> and <code>role</code> are optional and used for Team events. Valid roles: <code>leader</code> or <code>member</code>.<br />
+                                - A sanitized CSV file containing generated passwords will be downloaded automatically upon success.
                             </p>
                             <form onSubmit={handleImportSubmit} className="admin-import-form">
                                 <div className="admin-form-group">
