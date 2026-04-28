@@ -18,7 +18,7 @@ class Team(models.Model):
     event       = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="teams")
     name        = models.CharField(max_length=100)
     invite_code = models.CharField(max_length=20, unique=True, blank=True)
-    captain     = models.ForeignKey(User, on_delete=models.CASCADE, related_name="captained_teams")
+    captain     = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="captained_teams")
     created_at  = models.DateTimeField(auto_now_add=True)
 
     class Meta:

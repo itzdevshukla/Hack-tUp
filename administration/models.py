@@ -7,6 +7,14 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
 
 
+def get_default_superuser():
+    """Returns the first superuser's ID to assign orphaned events to."""
+    superuser = User.objects.filter(is_superuser=True).first()
+    if superuser:
+        return superuser.id
+    return None
+
+
 class Event(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending Approval'),
@@ -71,7 +79,7 @@ class Event(models.Model):
 
     access_code = models.CharField(max_length=50, unique=True, blank=True)
 
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.SET(get_default_superuser), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
