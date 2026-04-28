@@ -115,48 +115,40 @@ function AdminEventUserDetail() {
         }
     };
 
-    const handleExportData = () => {
-        const correctSubs = submissions.filter(s => s.is_correct);
-        
-        let csvContent = `Event Name,${eventName}\n`;
-        csvContent += `Username,${username}\n\n`;
-        
-        csvContent += "Rank,Total Points,Total Solves\n";
-        csvContent += `${rank},${points},${solves}\n\n`;
-
-        csvContent += "Correct Submissions\n";
-        csvContent += "No.,Challenge Title,Points,Timestamp\n";
-
-        if (correctSubs.length === 0) {
-            csvContent += "No correct submissions found.,,,\n";
-        } else {
-            correctSubs.forEach((sub, index) => {
-                const safeTitle = sub.challenge_title.replace(/"/g, '""');
-                csvContent += `${index + 1},"${safeTitle}",${sub.points || 0},"${sub.submitted_at}"\n`;
-            });
+    const handleExportData = async () => {
+        try {
+            const headers = {  };
+            const res = await fetch(`/api/admin/event/${id}/user/${userId}/export/`, { headers });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                // Get filename from Content-Disposition header if possible, otherwise construct a fallback
+                const contentDisposition = res.headers.get('Content-Disposition');
+                let filename = `${username.replace(/[^a-zA-Z0-9_\- ]/g, "").trim()}_export.xlsx`;
+                if (contentDisposition && contentDisposition.includes('filename="')) {
+                    filename = contentDisposition.split('filename="')[1].split('"')[0];
+                }
+                
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } else {
+                let errorMsg = "Failed to export data.";
+                try {
+                    const data = await res.json();
+                    if (data.details) errorMsg += `\n${data.details}`;
+                } catch(e) {}
+                alert(errorMsg);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Network error while exporting data.");
         }
-        
-        csvContent += "\nHints Taken\n";
-        csvContent += "No.,Challenge Title,Points Cost,Timestamp\n";
-        
-        if (!userHints || userHints.length === 0) {
-            csvContent += "No hints taken.,,,\n";
-        } else {
-            userHints.forEach((hint, index) => {
-                const safeTitle = hint.challenge_title.replace(/"/g, '""');
-                csvContent += `${index + 1},"${safeTitle}",-${hint.cost},"${hint.unlocked_at}"\n`;
-            });
-        }
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${username}_${eventName.replace(/\s+/g, '_')}_export.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
     };
 
     if (loading) return <div className="loading-text">Loading...</div>;

@@ -1445,7 +1445,6 @@ def admin_user_event_submissions_api(request, event_id, user_id):
             submissions_data.append({
                 "id": encode_id(s.id),
                 "challenge_title": s.challenge.title,
-                "points": s.challenge.points,
                 "flag": flag_val,
                 "is_correct": s.is_correct,
                 "submitted_at": timezone.localtime(s.submitted_at).strftime("%Y-%m-%d %I:%M:%S %p") if s.submitted_at else None
@@ -1825,6 +1824,156 @@ def admin_export_event_data_api(request, event_id):
 
     except Event.DoesNotExist:
         return JsonResponse({"error": "Event not found"}, status=404)
+    except Exception as e:
+        import traceback
+        return JsonResponse({"error": "Export failed", "details": str(e), "traceback": traceback.format_exc()}, status=500)
+
+@login_required
+def admin_export_user_data_api(request, event_id, user_id):
+    if not is_admin(request):
+        return JsonResponse({"error": "Forbidden"}, status=403)
+        
+    try:
+        event = Event.objects.get(id=event_id)
+        user = User.objects.get(id=user_id)
+        
+        # Get Leaderboard data for the specific user
+        from challenges.services import update_leaderboard_cache
+        from ctf.utils import encode_id
+        from challenges.models import UserChallenge, UserHint
+        
+        payload = update_leaderboard_cache(event.id)
+        if not payload:
+            return JsonResponse({"error": "Leaderboard data unavailable"}, status=503)
+            
+        leaderboard_data = payload.get('leaderboard', [])
+        encoded_user_id = encode_id(user.id)
+        user_rank_data = next((item for item in leaderboard_data if item["id"] == encoded_user_id), None)
+        
+        rank = user_rank_data["rank"] if user_rank_data else "—"
+        points = user_rank_data["points"] if user_rank_data else 0
+        solves = user_rank_data["flags"] if user_rank_data else 0
+        
+        # Submissions
+        submissions = (
+            UserChallenge.objects
+            .filter(challenge__event=event, user=user, is_correct=True)
+            .select_related("challenge")
+            .order_by("submitted_at")
+        )
+        
+        # Hints
+        if event.is_team_mode:
+            from teams.models import TeamMember, TeamHint
+            team_member = TeamMember.objects.filter(user=user, team__event=event).first()
+            if team_member:
+                hints = (
+                    TeamHint.objects
+                    .filter(team=team_member.team, unlocked_by=user)
+                    .select_related("hint__challenge")
+                    .order_by("unlocked_at")
+                )
+            else:
+                hints = []
+        else:
+            hints = (
+                UserHint.objects
+                .filter(hint__challenge__event=event, user=user)
+                .select_related("hint__challenge")
+                .order_by("unlocked_at")
+            )
+            
+        # Prepare Workbook and Sheet
+        import openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = f"{user.username[:25]} Export"
+
+        from openpyxl.styles import Font, Alignment
+
+        # Row 1: Event Name
+        ws.append(["Event Name", event.event_name])
+        ws.cell(row=1, column=1).font = Font(bold=True)
+        
+        # Row 2: Username
+        ws.append(["Username", user.username])
+        ws.cell(row=2, column=1).font = Font(bold=True)
+        
+        ws.append([]) # Blank row
+
+        # Rank / Total Points / Solves
+        headers_rank = ["Rank", "Total Points", "Total Solves"]
+        ws.append(headers_rank)
+        for col_num in range(1, len(headers_rank) + 1):
+            ws.cell(row=4, column=col_num).font = Font(bold=True)
+            
+        ws.append([rank, points, solves])
+        
+        ws.append([]) # Blank row
+        
+        # Submissions
+        ws.append(["Correct Submissions"])
+        ws.cell(row=7, column=1).font = Font(bold=True, italic=True)
+        
+        sub_headers = ["No.", "Challenge Title", "Points", "Timestamp"]
+        ws.append(sub_headers)
+        for col_num in range(1, len(sub_headers) + 1):
+            ws.cell(row=8, column=col_num).font = Font(bold=True)
+            
+        if not submissions:
+            ws.append(["No correct submissions found.", "", "", ""])
+        else:
+            for idx, s in enumerate(submissions, 1):
+                timestamp = timezone.localtime(s.submitted_at).strftime("%Y-%m-%d %I:%M:%S %p") if s.submitted_at else ""
+                ws.append([idx, s.challenge.title, s.challenge.points, timestamp])
+                
+        ws.append([]) # Blank row
+        
+        # Hints
+        hints_start_row = ws.max_row + 1
+        ws.append(["Hints Taken"])
+        ws.cell(row=hints_start_row, column=1).font = Font(bold=True, italic=True)
+        
+        hint_headers = ["No.", "Challenge Title", "Points Cost", "Timestamp"]
+        ws.append(hint_headers)
+        for col_num in range(1, len(hint_headers) + 1):
+            ws.cell(row=hints_start_row + 1, column=col_num).font = Font(bold=True)
+            
+        if not hints:
+            ws.append(["No hints taken.", "", "", ""])
+        else:
+            for idx, h in enumerate(hints, 1):
+                timestamp = timezone.localtime(h.unlocked_at).strftime("%Y-%m-%d %I:%M:%S %p") if h.unlocked_at else ""
+                ws.append([idx, h.hint.challenge.title, -h.hint.cost, timestamp])
+                
+        # Auto-adjust column widths for better readability (Margin Fix)
+        from openpyxl.utils import get_column_letter
+        for i, col in enumerate(ws.columns, 1):
+            max_length = 0
+            column_letter = get_column_letter(i)
+            for cell in col:
+                try:
+                    if cell.value and type(cell).__name__ != 'MergedCell':
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                except:
+                    pass
+            if max_length > 0:
+                ws.column_dimensions[column_letter].width = max_length + 2
+
+        # Prepare Response
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        safe_username = "".join([c for c in user.username if c.isalnum() or c in (' ', '-', '_')]).rstrip()
+        safe_event_name = "".join([c for c in event.event_name if c.isalnum() or c in (' ', '-', '_')]).rstrip()
+        response['Content-Disposition'] = f'attachment; filename="{safe_username}_{safe_event_name}_export.xlsx"'
+        response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+        wb.save(response)
+        return response
+
+    except (Event.DoesNotExist, User.DoesNotExist):
+        return JsonResponse({"error": "Event or User not found"}, status=404)
     except Exception as e:
         import traceback
         return JsonResponse({"error": "Export failed", "details": str(e), "traceback": traceback.format_exc()}, status=500)
