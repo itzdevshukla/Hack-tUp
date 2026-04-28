@@ -1445,6 +1445,7 @@ def admin_user_event_submissions_api(request, event_id, user_id):
             submissions_data.append({
                 "id": encode_id(s.id),
                 "challenge_title": s.challenge.title,
+                "points": s.challenge.points,
                 "flag": flag_val,
                 "is_correct": s.is_correct,
                 "submitted_at": timezone.localtime(s.submitted_at).strftime("%Y-%m-%d %I:%M:%S %p") if s.submitted_at else None

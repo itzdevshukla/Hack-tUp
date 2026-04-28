@@ -117,18 +117,34 @@ function AdminEventUserDetail() {
 
     const handleExportData = () => {
         const correctSubs = submissions.filter(s => s.is_correct);
-        let csvContent = "Event Name,Username,Total Points,Total Solves\n";
-        csvContent += `"${eventName}","${username}",${points},${solves}\n\n`;
+        
+        let csvContent = `Event Name,${eventName}\n`;
+        csvContent += `Username,${username}\n\n`;
+        
+        csvContent += "Rank,Total Points,Total Solves\n";
+        csvContent += `${rank},${points},${solves}\n\n`;
 
         csvContent += "Correct Submissions\n";
-        csvContent += "No.,Challenge Title,Timestamp\n";
+        csvContent += "No.,Challenge Title,Points,Timestamp\n";
 
         if (correctSubs.length === 0) {
-            csvContent += "No correct submissions found.,,\n";
+            csvContent += "No correct submissions found.,,,\n";
         } else {
             correctSubs.forEach((sub, index) => {
                 const safeTitle = sub.challenge_title.replace(/"/g, '""');
-                csvContent += `${index + 1},"${safeTitle}","${sub.submitted_at}"\n`;
+                csvContent += `${index + 1},"${safeTitle}",${sub.points || 0},"${sub.submitted_at}"\n`;
+            });
+        }
+        
+        csvContent += "\nHints Taken\n";
+        csvContent += "No.,Challenge Title,Points Cost,Timestamp\n";
+        
+        if (!userHints || userHints.length === 0) {
+            csvContent += "No hints taken.,,,\n";
+        } else {
+            userHints.forEach((hint, index) => {
+                const safeTitle = hint.challenge_title.replace(/"/g, '""');
+                csvContent += `${index + 1},"${safeTitle}",-${hint.cost},"${hint.unlocked_at}"\n`;
             });
         }
 
