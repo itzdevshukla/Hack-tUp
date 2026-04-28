@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'channels',
     'django_ratelimit',
     'storages',
+    'import_export',
 ]
 
 # ================= EMAIL CONFIGURATION =================

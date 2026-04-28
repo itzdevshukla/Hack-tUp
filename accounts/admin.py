@@ -2,13 +2,14 @@
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin
+from import_export.admin import ImportExportModelAdmin
 
 # Unregister default User admin
 admin.site.unregister(User)
 
 # Register with custom display
 @admin.register(User)
-class CustomUserAdmin(UserAdmin):
+class CustomUserAdmin(ImportExportModelAdmin, UserAdmin):
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'date_joined')
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'date_joined')
     search_fields = ('username', 'email', 'first_name', 'last_name')
@@ -63,7 +64,7 @@ class OTPVerificationAdmin(admin.ModelAdmin):
     is_expired_display.short_description = 'Expired'
 
 @admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
+class UserProfileAdmin(ImportExportModelAdmin):
     list_display = ('user', 'totp_enabled', 'has_session')
     list_filter = ('totp_enabled',)
     search_fields = ('user__username', 'user__email')

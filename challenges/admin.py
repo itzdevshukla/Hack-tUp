@@ -1,4 +1,5 @@
 from django.contrib import admin
+from import_export.admin import ImportExportModelAdmin
 from django.contrib.auth.hashers import make_password
 from .models import (
     Challenge, UserChallenge, ChallengeHint, UserHint, ChallengeAttachment,
@@ -17,7 +18,7 @@ class ChallengeWaveAdmin(admin.ModelAdmin):
     ordering = ('event', 'order')
 
 @admin.register(Challenge)
-class ChallengeAdmin(admin.ModelAdmin):
+class ChallengeAdmin(ImportExportModelAdmin):
     list_display = ('title', 'category', 'difficulty', 'points', 'event', 'wave', 'created_at')
     list_filter = ('category', 'difficulty', 'event', 'wave')
     search_fields = ('title', 'description', 'flag')
